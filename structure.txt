@@ -1,0 +1,172 @@
+SecureMail/
+│
+├── backend/                         # Flask Backend (MVC)
+│   │
+│   ├── app.py
+│   ├── config.py
+│   ├── requirements.txt
+│   ├── .env
+│   ├── .gitignore
+│   │
+│   ├── controllers/
+│   │   ├── auth_controller.py
+│   │   ├── user_controller.py
+│   │   ├── mail_controller.py
+│   │   ├── attachment_controller.py
+│   │   ├── notification_controller.py
+│   │   └── security_controller.py
+│   │
+│   ├── models/
+│   │   ├── user_model.py
+│   │   ├── mail_model.py
+│   │   ├── attachment_model.py
+│   │   ├── device_model.py
+│   │   ├── notification_model.py
+│   │   ├── audit_log_model.py
+│   │   └── token_model.py
+│   │
+│   ├── routes/
+│   │   ├── auth_routes.py
+│   │   ├── user_routes.py
+│   │   ├── mail_routes.py
+│   │   ├── attachment_routes.py
+│   │   ├── notification_routes.py
+│   │   └── security_routes.py
+│   │
+│   ├── services/
+│   │   ├── auth_service.py
+│   │   ├── encryption_service.py
+│   │   ├── mail_service.py
+│   │   ├── attachment_service.py
+│   │   ├── notification_service.py
+│   │   ├── audit_service.py
+│   │   └── device_service.py
+│   │
+│   ├── middleware/
+│   │   ├── jwt_auth.py
+│   │   ├── validation.py
+│   │   ├── rate_limiter.py
+│   │   └── error_handler.py
+│   │
+│   ├── database/
+│   │   ├── db.py
+│   │   ├── migrations/
+│   │   └── seed.py
+│   │
+│   ├── schemas/                     # Request validation schemas
+│   │   ├── auth_schema.py
+│   │   ├── mail_schema.py
+│   │   └── user_schema.py
+│   │
+│   ├── utils/
+│   │   ├── helpers.py
+│   │   ├── constants.py
+│   │   ├── validators.py
+│   │   └── logger.py
+│   │
+│   ├── uploads/
+│   │   ├── encrypted/
+│   │   └── temp/
+│   │
+│   ├── tests/
+│   │   ├── test_auth.py
+│   │   ├── test_mail.py
+│   │   └── test_security.py
+│   │
+│   └── logs/
+│       └── app.log
+│
+├── web/                             # React Web App
+│   │
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── components/
+│   │   │   ├── common/
+│   │   │   ├── layout/
+│   │   │   └── mail/
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── Auth/
+│   │   │   ├── Dashboard/
+│   │   │   ├── Inbox/
+│   │   │   ├── Compose/
+│   │   │   ├── Sent/
+│   │   │   ├── Profile/
+│   │   │   └── Settings/
+│   │   │
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── context/
+│   │   ├── routes/
+│   │   ├── utils/
+│   │   ├── styles/
+│   │   ├── App.jsx
+│   │   └── main.jsx
+│   │
+│   ├── package.json
+│   └── vite.config.js
+│
+├── mobile/                          # React Native App
+│   │
+│   ├── assets/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── screens/
+│   │   │   ├── Auth/
+│   │   │   ├── Inbox/
+│   │   │   ├── Compose/
+│   │   │   ├── Sent/
+│   │   │   ├── Profile/
+│   │   │   └── Settings/
+│   │   │
+│   │   ├── navigation/
+│   │   ├── services/
+│   │   ├── hooks/
+│   │   ├── context/
+│   │   ├── utils/
+│   │   └── App.js
+│   │
+│   ├── package.json
+│   └── app.json
+│
+├── docs/
+│   ├── PRD.md
+│   ├── SRS.pdf
+│   ├── API_Documentation.md
+│   ├── ER_Diagram.png
+│   ├── UML/
+│   ├── Database.sql
+│   └── Security_Architecture.pdf
+│
+├── README.md
+├── LICENSE
+└── .gitignore  
+
+
+| Folder          | Responsibility                                                |
+| --------------- | ------------------------------------------------------------- |
+| **Routes**      | Define API endpoints and forward requests to controllers      |
+| **Controllers** | Handle requests/responses, validate input, call services      |
+| **Services**    | Business logic (authentication, encryption, mail processing)  |
+| **Models**      | Database tables and ORM models                                |
+| **Middleware**  | JWT authentication, validation, rate limiting, error handling |
+| **Database**    | Database connection and migrations                            |
+| **Schemas**     | Validate incoming request data                                |
+| **Utils**       | Shared helper functions and utilities                         |
+| **Uploads**     | Store encrypted attachments temporarily or permanently        |
+| **Tests**       | Unit and integration tests                                    |
+| **Logs**        | Application and audit logs                                    |
+
+
+| Package                  | Why you need it                                              | When                  |
+| ------------------------ | ------------------------------------------------------------ | --------------------- |
+| `Flask`                  | Backend web framework                                        | ✅ Day 1               |
+| `Flask-Cors`             | Allows React to communicate with Flask                       | ✅ Day 1               |
+| `mysql-connector-python` | Connect Flask to MySQL                                       | ✅ Day 1               |
+| `Flask-JWT-Extended`     | JWT authentication                                           | ✅ Day 1               |
+| `python-dotenv`          | Read environment variables from `.env`                       | ✅ Day 1               |
+| `argon2-cffi`            | Secure password hashing                                      | ✅ Day 1               |
+| `email-validator`        | Validate email addresses                                     | ✅ Day 1               |
+| `cryptography`           | Encrypt/decrypt emails (AES-256-GCM)                         | 🔜 Secure Mail module |
+| `Werkzeug`               | Utilities used by Flask (installed automatically with Flask) | Automatic             |
