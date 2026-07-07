@@ -1,0 +1,428 @@
+/* Import Inter and Outfit Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Outfit:wght@400;600;700;800&display=swap');
+
+/* Reset and Core Styling */
+.sm-app, .sm-app * {
+  box-sizing: border-box;
+}
+
+.sm-app {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #232323;
+  -webkit-font-smoothing: antialiased;
+}
+
+.sm-app button, .sm-app input, .sm-app textarea {
+  font-family: inherit;
+}
+
+.sm-app button:focus-visible, .sm-app input:focus-visible, .sm-app textarea:focus-visible {
+  outline: 2px solid #6B4EFF;
+  outline-offset: 2px;
+}
+
+/* Custom Scrollbar styling */
+.sm-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.sm-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sm-scroll::-webkit-scrollbar-thumb {
+  background: #E5E0D9;
+  border-radius: 10px;
+}
+
+.sm-scroll::-webkit-scrollbar-thumb:hover {
+  background: #D8CFC2;
+}
+
+/* Base Buttons */
+.btn {
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.16s ease;
+  white-space: nowrap;
+}
+
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, #6B4EFF 0%, #8A6CFF 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(107, 78, 255, 0.28), 0 1px 2px rgba(107, 78, 255, 0.15);
+}
+
+.btn-primary:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(107, 78, 255, 0.34);
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-secondary {
+  background: #FFFFFF;
+  color: #232323;
+  border: 1.5px solid #E5E0D9;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background: #F7F2EA;
+  border-color: #D8CFC2;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #6A6A6A;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: rgba(107, 78, 255, 0.06);
+}
+
+/* Icon Buttons */
+.icon-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  transition: all 0.15s ease;
+  color: #6A6A6A;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.icon-btn:hover {
+  background: rgba(107, 78, 255, 0.08);
+  color: #6B4EFF;
+}
+
+/* Cards */
+.card {
+  background: #FFFFFF;
+  border-radius: 20px;
+  border: 1px solid #E5E0D9;
+  box-shadow: 0 1px 2px rgba(35, 35, 35, 0.04), 0 4px 16px rgba(35, 35, 35, 0.04);
+}
+
+/* Input Fields with Floating Labels */
+.field-wrap {
+  position: relative;
+}
+
+.field-input {
+  width: 100%;
+  border-radius: 14px;
+  border: 1.5px solid #E5E0D9;
+  background: #FFFFFF;
+  padding: 20px 16px 8px 16px;
+  font-size: 15px;
+  color: #232323;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.field-input:focus {
+  border-color: #6B4EFF;
+  box-shadow: 0 0 0 4px rgba(107, 78, 255, 0.1);
+}
+
+.field-input.error {
+  border-color: #D94B4B;
+}
+
+.field-input.error:focus {
+  box-shadow: 0 0 0 4px rgba(217, 75, 75, 0.12);
+}
+
+.field-label {
+  position: absolute;
+  font-size: 15px;
+  color: #6A6A6A;
+  pointer-events: none;
+  transition: all 0.15s ease;
+  top: 17px;
+}
+
+/* Float State */
+.field-label.floated {
+  top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #6B4EFF;
+  letter-spacing: 0.02em;
+}
+
+.field-input.error ~ .field-label.floated {
+  color: #D94B4B;
+}
+
+/* Custom Toggle Switch */
+.toggle {
+  width: 44px;
+  height: 26px;
+  border-radius: 999px;
+  background: #E5E0D9;
+  position: relative;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  border: none;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.toggle.on {
+  background: #6B4EFF;
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+  transition: transform 0.2s ease;
+}
+
+.toggle.on .toggle-knob {
+  transform: translateX(18px);
+}
+
+/* Custom Checkbox */
+.chk {
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  border: 1.5px solid #D8CFC2;
+  background: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+.chk.checked {
+  background: #6B4EFF;
+  border-color: #6B4EFF;
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.badge-encrypted {
+  background: #F2EDFF;
+  color: #6B4EFF;
+}
+
+.badge-success {
+  background: rgba(36, 162, 106, 0.12);
+  color: #24A26A;
+}
+
+/* Nav Menu Items */
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  color: #6A6A6A;
+  font-size: 14.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.nav-item:hover {
+  background: rgba(35, 35, 35, 0.035);
+  color: #232323;
+}
+
+.nav-item.active {
+  background: #FFFFFF;
+  color: #6B4EFF;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(35, 35, 35, 0.06);
+}
+
+/* Email Table Row styling */
+.email-row:hover {
+  background: #FBF8F3;
+}
+
+/* Skeleton Loading Shimmer */
+.skeleton {
+  background: linear-gradient(90deg, #EFE4D3 25%, #F7F2EA 37%, #EFE4D3 63%);
+  background-size: 400px 100%;
+  animation: shimmer 1.4s ease infinite;
+  border-radius: 8px;
+}
+
+/* Animation Keyframes */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shakeX {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200px 0; }
+  100% { background-position: 200px 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulseRing {
+  0% { box-shadow: 0 0 0 0 rgba(107, 78, 255, 0.35); }
+  100% { box-shadow: 0 0 0 16px rgba(107, 78, 255, 0); }
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+/* Utility Animations */
+.anim-fadeIn { animation: fadeIn 0.35s ease both; }
+.anim-scaleIn { animation: scaleIn 0.25s ease both; }
+.anim-slideUp { animation: slideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.anim-shake { animation: shakeX 0.4s ease; }
+.anim-spin { animation: spin 0.9s linear infinite; display: inline-flex; }
+.anim-pulseRing { animation: pulseRing 1.8s ease-out infinite; }
+.anim-toastIn { animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+
+/* Custom loading spinner */
+.spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+.spinner-purple {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(107, 78, 255, 0.1);
+  border-top-color: #6B4EFF;
+  border-radius: 50%;
+  animation: spin 0.9s linear infinite;
+}
+
+/* Hide elements on small screens */
+@media (max-width: 760px) {
+  .hide-on-narrow { display: none !important; }
+}
+
+/* ==================== LANDING PAGE STYLING ==================== */
+body {
+  font-family: 'Inter', sans-serif;
+}
+
+h1, h2, h3, h4, .brand-font {
+  font-family: 'Outfit', sans-serif;
+}
+
+/* Background dot grid pattern */
+.bg-dot-grid {
+  background-image: radial-gradient(rgba(107, 78, 255, 0.06) 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+}
+
+/* Floating card animation */
+.mockup-float {
+  animation: floatMotion 8s ease-in-out infinite;
+  perspective: 1000px;
+}
+
+@keyframes floatMotion {
+  0%, 100% {
+    transform: translateY(0px) rotateX(1deg);
+  }
+  50% {
+    transform: translateY(-10px) rotateX(-1deg);
+  }
+}
+
+/* Hover effect for features cards */
+.feature-card {
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 20px 40px rgba(107, 78, 255, 0.06), 0 1px 3px rgba(107, 78, 255, 0.02);
+}
+
+/* Animated gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, #6B4EFF 0%, #8A6CFF 40%, #FF8A6C 80%, #6B4EFF 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shiftGradient 8s linear infinite;
+}
+
+@keyframes shiftGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Micro-interactions on buttons */
+.btn-grow {
+  transition: all 0.2s ease;
+}
+
+.btn-grow:hover {
+  transform: scale(1.02);
+}

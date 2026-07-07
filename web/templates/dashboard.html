@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureMail - Secure Vault Dashboard</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#6B4EFF',
+            accent: '#8A6CFF',
+            charcoal: '#232323',
+            mediumGray: '#6A6A6A',
+            beigeLight: '#F7F2EA',
+            beigeMedium: '#EFE4D3',
+            beigeBorder: '#E5E0D9'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#F7F2EA] min-h-screen flex items-stretch sm-app overflow-hidden select-none">
+
+  <!-- ==================== MAIN APP DASHBOARD ==================== -->
+  <div id="app-dashboard" class="w-full flex h-screen bg-[#F7F2EA] anim-fadeIn">
+    
+    <!-- LEFT SIDEBAR -->
+    <aside class="w-68 min-w-[272px] h-full bg-[#EFE4D3] border-r border-beigeBorder flex flex-col p-6 overflow-y-auto sm-scroll select-none">
+      <!-- Logo Branding -->
+      <div class="flex items-center gap-2.5 px-2 mb-7">
+        <div class="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#6B4EFF] to-[#8A6CFF] flex items-center justify-center shadow-[0_3px_8px_rgba(107,78,255,0.3)]">
+          <i data-lucide="shield-check" class="text-white w-[18px] h-[18px]"></i>
+        </div>
+        <span class="text-[17px] font-bold tracking-tight text-charcoal">SecureMail</span>
+      </div>
+
+      <!-- Compose Action -->
+      <div class="mb-5">
+        <button id="sidebar-compose-btn" class="btn btn-primary w-full" style="padding: 11px 20px; font-size: 14.5px; border-radius: 16px;">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          <span>Compose</span>
+        </button>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex flex-col gap-0.5" id="sidebar-nav">
+        <!-- Renders dynamically from NAV_ITEMS -->
+      </nav>
+
+      <!-- Sidebar Status Panels -->
+      <div class="mt-auto flex flex-col gap-4 pt-5 border-t border-beigeBorder">
+        
+        <!-- Storage usage card -->
+        <div class="bg-white rounded-2xl p-3.5 border border-beigeBorder shadow-sm">
+          <div class="flex justify-between text-xs text-mediumGray mb-2">
+            <span>Storage</span>
+            <span id="storage-text-display">0 GB / 15 GB</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-[#EFE4D3] overflow-hidden">
+            <div id="storage-bar-display" class="h-full w-[0%] rounded-full bg-gradient-to-r from-brand to-accent"></div>
+          </div>
+        </div>
+
+        <!-- Security score card -->
+        <div class="bg-white rounded-2xl p-3.5 border border-beigeBorder shadow-sm flex items-center gap-3">
+          <div class="relative w-11 h-11 flex-shrink-0">
+            <!-- SVG ScoreRing -->
+            <svg width="44" height="44" class="transform -rotate-90">
+              <circle cx="22" cy="22" r="20" stroke="#E5E0D9" stroke-width="4" fill="none" />
+              <circle cx="22" cy="22" r="20" stroke="#6B4EFF" stroke-width="4" fill="none" stroke-dasharray="125.66" stroke-dashoffset="7.54" stroke-linecap="round" />
+            </svg>
+            <div class="absolute inset-0 flex items-center justify-center text-xs font-bold text-brand">94</div>
+          </div>
+          <div>
+            <div class="text-[13px] font-semibold text-charcoal">Security Score</div>
+            <div class="text-[11.5px] text-[#24A26A] font-semibold">Excellent</div>
+          </div>
+        </div>
+
+        <!-- User profile summary info -->
+        <div class="flex items-center gap-2.5 p-1">
+          <div class="w-9 h-9 rounded-full bg-[#F2EDFF] text-brand flex items-center justify-center font-bold text-[13px] flex-shrink-0" id="user-avatar-initials">
+            US
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-[13.5px] font-semibold text-charcoal truncate" id="user-display-name">Username</div>
+            <div class="text-[11.5px] text-mediumGray truncate" id="user-display-email">user@securemail.app</div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- RIGHT CONTAINER -->
+    <div class="flex-1 flex flex-col min-w-0">
+      
+      <!-- TOPBAR -->
+      <header class="h-[72px] min-h-[72px] border-b border-beigeBorder flex items-center justify-between px-7 bg-white select-none relative z-20">
+        <!-- Search bar input -->
+        <div class="relative flex-1 max-w-[440px]">
+          <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-mediumGray w-[17px] h-[17px] pointer-events-none"></i>
+          <input
+            id="search-mail-input"
+            type="text"
+            placeholder="Search encrypted mail..."
+            class="field-input w-full"
+            style="padding: 10px 14px 10px 40px; border-radius: 12px; background: #F7F2EA; border: 1.5px solid transparent; font-size: 14px;"
+          />
+        </div>
+        
+        <!-- Notifications & Avatar Dropdown -->
+        <div class="flex items-center gap-4">
+          <div class="relative">
+            <button class="icon-btn w-9 h-9" title="Notifications">
+              <i data-lucide="bell" class="w-[18px] h-[18px]"></i>
+            </button>
+            <span class="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[#D94B4B] border border-white pointer-events-none"></span>
+          </div>
+          
+          <div class="w-[1px] h-6 bg-beigeBorder"></div>
+          
+          <!-- Avatar Menu Trigger -->
+          <div class="relative">
+            <button id="topbar-avatar-btn" class="w-9.5 h-9.5 rounded-full bg-[#F2EDFF] text-brand flex items-center justify-center font-bold text-[13.5px] cursor-pointer overflow-hidden border border-transparent hover:border-brand transition duration-150" id="user-avatar-topbar">
+              US
+            </button>
+            
+            <!-- Profile dropdown card -->
+            <div id="profile-dropdown" class="hidden absolute right-0 top-11 w-[190px] bg-white rounded-2xl border border-beigeBorder shadow-lg p-1.5 anim-scaleIn z-30">
+              <div id="profile-settings-btn" class="nav-item text-charcoal hover:bg-beigeLight">
+                <i data-lucide="settings" class="w-4 h-4 text-mediumGray"></i>
+                <span>Settings</span>
+              </div>
+              <div id="profile-logout-btn" class="nav-item text-[#D94B4B] hover:bg-red-50">
+                <i data-lucide="log-out" class="w-4 h-4 text-[#D94B4B]"></i>
+                <span>Log out</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- DYNAMIC CONTENT BODY -->
+      <main class="flex-1 flex flex-col min-h-0 relative z-10">
+
+        <!-- ==================== A. INBOX SCREEN ==================== -->
+        <div id="inbox-screen" class="flex-1 flex flex-col min-h-0 p-8 overflow-y-auto sm-scroll anim-fadeIn">
+          
+          <!-- Screen Header and Filters -->
+          <div class="flex items-center justify-between mb-5 flex-shrink-0">
+            <div id="inbox-header-titles">
+              <h1 class="text-[26px] font-bold tracking-tight text-charcoal m-0">Inbox</h1>
+              <p id="inbox-unread-count" class="text-[13.5px] text-mediumGray mt-0.5">3 unread messages</p>
+            </div>
+            
+            <!-- Bulk actions (shown when emails are selected) -->
+            <div id="bulk-actions-panel" class="hidden anim-fadeIn card flex items-center gap-1 p-1 bg-white">
+              <span id="bulk-selection-count" class="text-[13px] font-semibold px-2.5 text-brand">2 selected</span>
+              <div class="w-[1px] h-5 bg-beigeBorder mx-1"></div>
+              <button id="bulk-read-btn" class="icon-btn w-9 h-9" title="Mark as read"><i data-lucide="check" class="w-[17px] h-[17px]"></i></button>
+              <button id="bulk-archive-btn" class="icon-btn w-9 h-9" title="Archive"><i data-lucide="archive" class="w-[17px] h-[17px]"></i></button>
+              <button id="bulk-delete-btn" class="icon-btn w-9 h-9" title="Delete"><i data-lucide="trash-2" class="w-[17px] h-[17px]"></i></button>
+              <button id="bulk-clear-btn" class="icon-btn w-9 h-9" title="Clear selection"><i data-lucide="x" class="w-[17px] h-[17px]"></i></button>
+            </div>
+            
+            <!-- Standard Filters -->
+            <div id="inbox-filters" class="flex gap-1.5 flex-wrap justify-end">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Email List Table / Card -->
+          <div class="card overflow-hidden flex-1 flex flex-col min-h-0 bg-white">
+            
+            <!-- Email Shimmer / Loading State -->
+            <div id="inbox-loading-state" class="hidden p-5 flex flex-col gap-4">
+              <!-- Standard skeleton lines -->
+              <div class="flex items-center gap-3.5">
+                <div class="skeleton w-[18px] h-[18px] rounded"></div>
+                <div class="skeleton w-[38px] h-[38px] rounded-full"></div>
+                <div class="flex-1 flex flex-col gap-2">
+                  <div class="skeleton w-[120px] h-3"></div>
+                  <div class="skeleton w-[240px] h-2.5"></div>
+                </div>
+                <div class="skeleton w-12 h-2.5"></div>
+              </div>
+              <div class="flex items-center gap-3.5">
+                <div class="skeleton w-[18px] h-[18px] rounded"></div>
+                <div class="skeleton w-[38px] h-[38px] rounded-full"></div>
+                <div class="flex-1 flex flex-col gap-2">
+                  <div class="skeleton w-[110px] h-3"></div>
+                  <div class="skeleton w-[290px] h-2.5"></div>
+                </div>
+                <div class="skeleton w-12 h-2.5"></div>
+              </div>
+            </div>
+
+            <!-- Scrollable List of Emails -->
+            <div id="inbox-email-list" class="flex-1 overflow-y-auto sm-scroll">
+              <!-- Generated dynamically by Javascript -->
+            </div>
+            
+            <!-- Empty Folder State -->
+            <div id="inbox-empty-state" class="hidden">
+              <!-- Toggled and rendered dynamically -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ==================== B. READ / DECRYPT EMAIL SCREEN ==================== -->
+        <div id="read-screen" class="flex-1 flex flex-col min-h-0 p-8 overflow-y-auto sm-scroll anim-fadeIn hidden">
+          <!-- Back button and Quick actions -->
+          <div class="flex items-center justify-between mb-6 max-w-[720px] w-full mx-auto flex-shrink-0">
+            <button id="read-back-btn" class="icon-btn w-9 h-9" title="Back to inbox">
+              <i data-lucide="arrow-left" class="w-[18px] h-[18px]"></i>
+            </button>
+            <div class="flex gap-1">
+              <button id="read-star-btn" class="icon-btn w-9 h-9" title="Star"><i data-lucide="star" class="w-[18px] h-[18px]"></i></button>
+              <button id="read-archive-btn" class="icon-btn w-9 h-9" title="Archive"><i data-lucide="archive" class="w-[18px] h-[18px]"></i></button>
+              <button id="read-delete-btn" class="icon-btn w-9 h-9" title="Delete"><i data-lucide="trash-2" class="w-[18px] h-[18px]"></i></button>
+              <button class="icon-btn w-9 h-9" title="More"><i data-lucide="more-horizontal" class="w-[18px] h-[18px]"></i></button>
+            </div>
+          </div>
+
+          <!-- Email Core Container -->
+          <div class="max-w-[720px] w-full mx-auto flex-1 flex flex-col">
+            <!-- Email Title Subject -->
+            <h1 id="read-email-subject" class="text-[23px] font-bold text-charcoal mb-4 tracking-tight leading-snug"> NDA & Series B Term Sheet — Please Review</h1>
+            
+            <!-- Sender Header Metadata -->
+            <div class="flex items-center gap-3 mb-7 pb-6 border-b border-beigeBorder flex-shrink-0">
+              <div id="read-sender-avatar" class="w-11 h-11 rounded-full bg-[#F2EDFF] text-brand flex items-center justify-center font-bold text-[14.5px]">
+                AR
+              </div>
+              <div class="flex-1 min-w-0">
+                <div id="read-sender-name" class="text-[14.5px] font-semibold text-charcoal">Aditi Rao</div>
+                <div id="read-sender-email" class="text-[12.5px] text-mediumGray">aditi.rao@keplersystems.com</div>
+              </div>
+              <div id="read-email-time" class="text-[12.5px] text-mediumGray">9:42 AM</div>
+            </div>
+
+            <!-- DECRYPTION PROMPT CARD (Locked state) -->
+            <div id="decrypt-prompt-card" class="card p-12 flex flex-col items-center text-center max-w-[520px] mx-auto w-full anim-scaleIn hidden">
+              <div id="decrypt-icon-ring" class="w-16 h-16 rounded-full bg-[#F2EDFF] flex items-center justify-center mb-5 transition duration-300">
+                <i data-lucide="lock" class="text-brand w-[26px] h-[26px]"></i>
+              </div>
+
+              <div id="decrypt-prompt-texts">
+                <h3 class="text-[17px] font-semibold text-charcoal mb-1.5">This message is encrypted</h3>
+                <p class="text-[13.5px] text-mediumGray mb-6 max-w-[340px]">
+                  Enter the passkey shared with you separately to decrypt and read this message.
+                </p>
+              </div>
+
+              <!-- Input passkey row -->
+              <div class="w-full max-w-[280px] mb-4">
+                <div class="field-wrap">
+                  <i data-lucide="key-round" class="absolute left-4 top-[19px] text-mediumGray pointer-events-none w-[18px] h-[18px]"></i>
+                  <input
+                    id="decrypt-passkey-input"
+                    type="password"
+                    class="field-input font-mono tracking-[0.08em]"
+                    style="padding-left: 44px;"
+                    placeholder=" "
+                  />
+                  <label class="field-label" style="left: 44px;">Passkey</label>
+                </div>
+                <!-- Error text feedback -->
+                <div id="decrypt-error-text" class="hidden flex items-center justify-center gap-1.5 text-[#D94B4B] text-[12.5px] font-semibold mt-3">
+                  <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i> Incorrect passkey. Please try again.
+                </div>
+              </div>
+
+              <div class="w-full max-w-[280px]">
+                <button id="decrypt-submit-btn" class="btn btn-primary w-full" style="padding: 11px 20px; font-size: 14.5px; border-radius: 16px;">
+                  <i data-lucide="lock" class="w-4 h-4"></i>
+                  <span>Decrypt Message</span>
+                </button>
+              </div>
+
+              <div class="flex items-center gap-1.5 mt-6 text-mediumGray text-xs">
+                <i data-lucide="shield" class="w-3 h-3"></i>
+                <span>End-to-end encrypted &middot; Zero-knowledge architecture</span>
+              </div>
+            </div>
+
+            <!-- UNLOCKED SECURE CONTENT PANEL (Decrypted state) -->
+            <div id="decrypted-content-panel" class="anim-fadeIn flex-1 flex flex-col hidden">
+              <!-- Verified Badge -->
+              <div class="mb-5 flex-shrink-0">
+                <span class="badge badge-success">
+                  <i data-lucide="shield-check" class="w-3 h-3"></i>
+                  <span>Decrypted & Verified</span>
+                </span>
+              </div>
+              
+              <!-- Decrypted Body Paragraphs -->
+              <div id="read-email-body" class="text-[15px] leading-relaxed text-charcoal mb-6 flex-1">
+                <!-- Injected dynamically -->
+              </div>
+
+              <!-- Attachment Card Container -->
+              <div id="read-attachment-card" class="card flex items-center gap-3.5 p-4 mb-8 max-w-[400px] w-full bg-white flex-shrink-0 hidden">
+                <div class="w-[42px] h-[42px] rounded-xl bg-[#F2EDFF] flex items-center justify-center flex-shrink-0">
+                  <i data-lucide="file-text" class="text-brand w-[19px] h-[19px]"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div id="read-attachment-name" class="text-[13.5px] font-semibold text-charcoal truncate">Kepler_TermSheet_v3.pdf</div>
+                  <div id="read-attachment-size" class="text-[12px] text-mediumGray truncate">1.2 MB</div>
+                </div>
+                <button class="icon-btn w-9 h-9" title="Secure download">
+                  <i data-lucide="download" class="w-[18px] h-[18px]"></i>
+                </button>
+              </div>
+
+              <!-- Action buttons -->
+              <div class="flex gap-2.5 pt-6 border-t border-beigeBorder mt-auto flex-shrink-0">
+                <button class="btn btn-secondary" style="padding: 9px 16px; border-radius: 12px; font-size: 13.5px;">
+                  <i data-lucide="reply" class="w-4 h-4 text-mediumGray"></i>
+                  <span>Reply</span>
+                </button>
+                <button class="btn btn-secondary" style="padding: 9px 16px; border-radius: 12px; font-size: 13.5px;">
+                  <i data-lucide="forward" class="w-4 h-4 text-mediumGray"></i>
+                  <span>Forward</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- ==================== 3. FLOATING COMPOSE DIALOG ==================== -->
+  <div id="compose-panel" class="hidden fixed bottom-6 right-6 w-[560px] max-w-[calc(100vw-48px)] h-[600px] max-h-[calc(100vh-48px)] flex flex-col z-40 bg-white rounded-[20px] border border-beigeBorder shadow-[0_20px_60px_rgba(35,35,35,0.18),0_4px_16px_rgba(35,35,35,0.08)] overflow-hidden anim-slideUp">
+    
+    <!-- Titlebar Header -->
+    <div class="flex items-center justify-between px-5 py-4 border-b border-beigeBorder bg-white flex-shrink-0">
+      <span class="text-sm font-semibold text-charcoal">New Message</span>
+      <button id="compose-close-btn" class="icon-btn w-9 h-9" title="Close">
+        <i data-lucide="x" class="w-[18px] h-[18px]"></i>
+      </button>
+    </div>
+
+    <!-- Recipient row -->
+    <div class="px-5 py-1 border-b border-[#F0EAE0] flex items-center flex-shrink-0">
+      <span class="text-[13px] text-mediumGray w-10">To</span>
+      <input
+        id="compose-to-input"
+        type="text"
+        placeholder="Recipient's email"
+        class="flex-1 border-none outline-none py-2.5 text-sm font-normal bg-transparent focus:ring-0"
+      />
+      <button id="compose-cc-toggle" class="border-none bg-transparent text-mediumGray text-[12.5px] font-semibold cursor-pointer hover:text-charcoal transition duration-150">Cc/Bcc</button>
+    </div>
+
+    <!-- Toggled Cc field -->
+    <div id="compose-cc-row" class="hidden px-5 py-1 border-b border-[#F0EAE0] flex items-center flex-shrink-0 anim-fadeIn">
+      <span class="text-[13px] text-mediumGray w-10">Cc</span>
+      <input
+        id="compose-cc-input"
+        type="text"
+        placeholder="Cc recipients"
+        class="flex-1 border-none outline-none py-2.5 text-sm font-normal bg-transparent focus:ring-0"
+      />
+    </div>
+
+    <!-- Subject field row -->
+    <div class="px-5 py-1 border-b border-[#F0EAE0] flex-shrink-0">
+      <input
+        id="compose-subject-input"
+        type="text"
+        placeholder="Subject"
+        class="w-full border-none outline-none py-2.5 text-[15px] font-semibold bg-transparent focus:ring-0"
+      />
+    </div>
+
+    <!-- Text area rich body -->
+    <textarea
+      id="compose-body-textarea"
+      placeholder="Write your encrypted message..."
+      class="flex-1 min-h-0 border-none outline-none resize-none px-5 py-4 text-[14.5px] leading-relaxed bg-transparent focus:ring-0 sm-scroll"
+    ></textarea>
+
+    <!-- Optional Mock Attachment row -->
+    <div id="compose-attachment-bar" class="px-5 pb-3 bg-transparent flex-shrink-0">
+      <div class="inline-flex items-center gap-2 bg-[#F7F2EA] border border-beigeBorder rounded-xl px-2.5 py-1.5 w-fit">
+        <i data-lucide="paperclip" class="w-3.5 h-3.5 text-mediumGray"></i>
+        <span class="text-[12.5px] text-charcoal font-medium">Q3_Proposal.pdf</span>
+        <span class="text-[11.5px] text-mediumGray">480 KB</span>
+        <button id="compose-remove-attachment-btn" class="border-none bg-transparent cursor-pointer flex p-0.5 hover:bg-beigeBorder rounded-md transition duration-150">
+          <i data-lucide="x" class="w-3.5 h-3.5 text-mediumGray"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Encrypted Key generation info block -->
+    <div id="compose-encryption-key-block" class="hidden mx-5 mb-3.5 p-3.5 bg-[#F2EDFF] rounded-[14px] flex items-center gap-3 flex-shrink-0 anim-fadeIn">
+      <i data-lucide="key-round" class="text-brand w-4 h-4 flex-shrink-0"></i>
+      <div class="flex-1 min-w-0">
+        <div id="generated-passkey-display" class="text-[13px] font-bold text-brand font-mono tracking-wider">7K2M-9QXF</div>
+        <div class="text-[11px] text-mediumGray mt-0.5">Share this passkey with your recipient separately</div>
+      </div>
+      <button id="generate-new-key-btn" class="icon-btn w-7 h-7 hover:bg-[rgba(107,78,255,0.12)]" title="Generate new passkey">
+        <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-brand"></i>
+      </button>
+    </div>
+
+    <!-- Bottom Actions Toolbar -->
+    <div class="flex items-center gap-3 px-5 py-3.5 border-t border-beigeBorder bg-white flex-shrink-0 select-none">
+      <div class="flex gap-0.5">
+        <button class="icon-btn w-8 h-8" title="Bold"><i data-lucide="bold" class="w-[15px] h-[15px]"></i></button>
+        <button class="icon-btn w-8 h-8" title="Italic"><i data-lucide="italic" class="w-[15px] h-[15px]"></i></button>
+        <button class="icon-btn w-8 h-8" title="Underline"><i data-lucide="underline" class="w-[15px] h-[15px]"></i></button>
+        <button class="icon-btn w-8 h-8" title="Insert Link"><i data-lucide="link-2" class="w-[15px] h-[15px]"></i></button>
+        <button class="icon-btn w-8 h-8" title="List"><i data-lucide="list" class="w-[15px] h-[15px]"></i></button>
+        <button class="icon-btn w-8 h-8" title="Attach file"><i data-lucide="paperclip" class="w-[15px] h-[15px]"></i></button>
+      </div>
+
+      <div class="w-[1px] h-5 bg-beigeBorder"></div>
+
+      <div class="flex items-center gap-2">
+        <button id="compose-encryption-toggle" class="toggle" aria-pressed="false">
+          <span class="toggle-knob"></span>
+        </button>
+        <span id="compose-encryption-toggle-label" class="text-[12.5px] font-semibold text-mediumGray select-none">Encrypt</span>
+      </div>
+
+      <div class="flex-1"></div>
+
+      <button id="compose-send-btn" class="btn btn-primary" style="padding: 10px 20px; font-size: 14.5px; border-radius: 12px;">
+        <i data-lucide="send" class="w-4 h-4"></i>
+        <span>Send</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ==================== 4. FLOATING TOAST CONTAINER ==================== -->
+  <div id="toast-alert" class="hidden fixed top-6 right-6 z-[60] flex items-center gap-2.5 p-[14px_18px] max-w-[340px] bg-white rounded-[20px] border border-beigeBorder shadow-lg anim-toastIn">
+    <i data-lucide="check-circle-2" class="w-[18px] h-[18px] text-[#24A26A] flex-shrink-0"></i>
+    <span id="toast-text" class="text-[13.5px] font-medium text-charcoal">Email sent successfully!</span>
+  </div>
+
+  <script src="/static/js/dashboard.js"></script>
+</body>
+</html>

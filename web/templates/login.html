@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SecureMail - Log In</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Custom Styling -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: '#6B4EFF',
+            accent: '#8A6CFF',
+            charcoal: '#232323',
+            mediumGray: '#6A6A6A',
+            beigeLight: '#F7F2EA',
+            beigeMedium: '#EFE4D3',
+            beigeBorder: '#E5E0D9'
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#F7F2EA] min-h-screen flex items-stretch sm-app overflow-hidden select-none">
+
+  <div class="w-full flex min-h-screen anim-fadeIn">
+    <!-- Left Hero Banner (Trust points, branding) -->
+    <div class="hide-on-narrow flex-1 relative overflow-hidden bg-gradient-to-br from-[#F2EDFF] via-[#EFE4D3] to-[#F7F2EA] p-12 flex flex-col justify-between">
+      <div class="absolute w-[340px] h-[340px] rounded-full bg-[rgba(107,78,255,0.1)] blur-[50px] -top-20 -right-20 pointer-events-none"></div>
+      <div class="absolute w-[260px] h-[260px] rounded-full bg-[rgba(138,108,255,0.12)] blur-[60px] -bottom-6 -left-10 pointer-events-none"></div>
+
+      <!-- Header Branding -->
+      <div class="flex items-center gap-2.5 relative z-10">
+        <div class="w-9 h-9 rounded-[11px] bg-gradient-to-br from-[#6B4EFF] to-[#8A6CFF] flex items-center justify-center shadow-[0_4px_10px_rgba(107,78,255,0.3)]">
+          <i data-lucide="shield-check" class="text-white w-[19px] h-[19px]"></i>
+        </div>
+        <span class="text-[18px] font-bold tracking-tight text-charcoal">SecureMail</span>
+      </div>
+
+      <!-- Middle Content -->
+      <div class="flex flex-col justify-center max-w-[400px] flex-1 relative z-10 my-auto">
+        <h1 class="text-[34px] font-bold leading-[1.25] tracking-tight mb-4 text-charcoal">
+          Private communication.<br>Protected by cryptography.
+        </h1>
+        <p class="text-[15px] text-mediumGray leading-relaxed mb-8">
+          End-to-end encrypted email built for people and teams who take privacy seriously.
+        </p>
+        
+        <!-- Trust Points -->
+        <div class="flex flex-col gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-[rgba(255,255,255,0.6)] border border-beigeBorder flex items-center justify-center flex-shrink-0">
+              <i data-lucide="shield" class="text-brand w-3.5 h-3.5"></i>
+            </div>
+            <span class="text-[13.5px] text-charcoal font-medium">End-to-end encrypted by default</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-[rgba(255,255,255,0.6)] border border-beigeBorder flex items-center justify-center flex-shrink-0">
+              <i data-lucide="fingerprint" class="text-brand w-3.5 h-3.5"></i>
+            </div>
+            <span class="text-[13.5px] text-charcoal font-medium">Passwordless sign-in with passkeys</span>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl bg-[rgba(255,255,255,0.6)] border border-beigeBorder flex items-center justify-center flex-shrink-0">
+              <i data-lucide="lock" class="text-brand w-3.5 h-3.5"></i>
+            </div>
+            <span class="text-[13.5px] text-charcoal font-medium">Zero-knowledge — we can never read your mail</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="text-[12px] text-mediumGray relative z-10">&copy; 2026 SecureMail</div>
+    </div>
+
+    <!-- Right Side Login Form -->
+    <div class="flex-1 flex items-center justify-center p-6 bg-[#F7F2EA]">
+      <div id="login-card" class="w-full max-w-[380px] anim-fadeIn">
+        <h2 class="text-2xl font-bold text-charcoal mb-1.5">Welcome back</h2>
+        <p class="text-sm text-mediumGray mb-7">Sign in to your encrypted inbox</p>
+
+        <!-- Error Feedback Alert -->
+        <div id="login-error-alert" class="hidden flex items-start gap-2.5 p-3.5 bg-red-50 border border-red-200 rounded-xl mb-4 text-[#D94B4B] text-[13px] font-medium leading-relaxed">
+          <i data-lucide="alert-circle" class="w-[17px] h-[17px] mt-0.5 flex-shrink-0"></i>
+          <span class="error-text">Authentication failed. Please check your credentials.</span>
+        </div>
+
+        <form id="login-form">
+          <!-- Email Input -->
+          <div class="mb-4">
+            <div class="field-wrap">
+              <i data-lucide="mail" class="absolute left-4 top-[19px] text-mediumGray pointer-events-none w-[18px] h-[18px]"></i>
+              <input
+                id="login-email-input"
+                type="email"
+                class="field-input"
+                style="padding-left: 44px;"
+                placeholder=" "
+                required
+              />
+              <label class="field-label" style="left: 44px;">Email Address</label>
+            </div>
+          </div>
+
+          <!-- Password Input -->
+          <div class="mb-6">
+            <div class="field-wrap">
+              <i data-lucide="lock" class="absolute left-4 top-[19px] text-mediumGray pointer-events-none w-[18px] h-[18px]"></i>
+              <input
+                id="login-password-input"
+                type="password"
+                class="field-input"
+                style="padding-left: 44px; padding-right: 44px;"
+                placeholder=" "
+                required
+              />
+              <label class="field-label" style="left: 44px;">Password</label>
+              <!-- Toggle Button -->
+              <button
+                type="button"
+                id="login-password-toggle"
+                class="absolute right-4 top-[19px] text-mediumGray hover:text-brand cursor-pointer"
+              >
+                <i data-lucide="eye" class="eye-open-icon w-[18px] h-[18px]"></i>
+                <i data-lucide="eye-off" class="eye-closed-icon w-[18px] h-[18px] hidden"></i>
+              </button>
+            </div>
+          </div>
+
+          <button id="login-submit-btn" type="submit" class="btn btn-primary w-full" style="padding: 11px 20px; font-size: 14.5px; border-radius: 16px;">
+            <span>Authenticate Vault</span>
+          </button>
+        </form>
+
+        <p class="text-center text-[13.5px] text-mediumGray mt-7">
+          Need a secure mail key? <a href="/register" id="to-register-btn" class="text-brand font-semibold hover:underline">Create account</a>
+        </p>
+
+        <div class="flex items-center justify-center gap-1.5 mt-10 text-mediumGray text-[11.5px]">
+          <i data-lucide="shield" class="w-3 h-3"></i>
+          <span>Protected by end-to-end encryption</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/js/login.js"></script>
+</body>
+</html>
