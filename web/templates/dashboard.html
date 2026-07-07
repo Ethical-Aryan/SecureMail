@@ -32,9 +32,11 @@
 
   <!-- ==================== MAIN APP DASHBOARD ==================== -->
   <div id="app-dashboard" class="w-full flex h-screen bg-[#F7F2EA] anim-fadeIn">
+    <!-- Sidebar mobile overlay -->
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
     
     <!-- LEFT SIDEBAR -->
-    <aside class="w-68 min-w-[272px] h-full bg-[#EFE4D3] border-r border-beigeBorder flex flex-col p-6 overflow-y-auto sm-scroll select-none">
+    <aside id="sidebar-drawer" class="w-68 min-w-[272px] h-full bg-[#EFE4D3] border-r border-beigeBorder flex flex-col p-6 overflow-y-auto sm-scroll select-none">
       <!-- Logo Branding -->
       <div class="flex items-center gap-2.5 px-2 mb-7">
         <div class="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#6B4EFF] to-[#8A6CFF] flex items-center justify-center shadow-[0_3px_8px_rgba(107,78,255,0.3)]">
@@ -104,6 +106,9 @@
       
       <!-- TOPBAR -->
       <header class="h-[72px] min-h-[72px] border-b border-beigeBorder flex items-center justify-between px-7 bg-white select-none relative z-20">
+        <button id="mobile-sidebar-toggle" class="md:hidden flex items-center justify-center p-1.5 rounded-lg text-mediumGray hover:bg-[#F7F2EA] mr-2">
+          <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
         <!-- Search bar input -->
         <div class="relative flex-1 max-w-[440px]">
           <i data-lucide="search" class="absolute left-3.5 top-1/2 -translate-y-1/2 text-mediumGray w-[17px] h-[17px] pointer-events-none"></i>

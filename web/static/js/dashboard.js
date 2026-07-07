@@ -898,5 +898,28 @@ window.addEventListener('load', () => {
   const email = payload.email || localStorage.getItem('user_email') || 'arjun.mehta@securemail.app';
   setupFloatingLabels();
   loadDashboard(email);
+  
+  // Mobile drawer trigger hook
+  const drawer = document.getElementById('sidebar-drawer');
+  const overlay = document.getElementById('sidebar-overlay');
+  const toggle = document.getElementById('mobile-sidebar-toggle');
+  
+  if (toggle && drawer && overlay) {
+    const closeDrawer = () => {
+      drawer.classList.remove('mobile-open');
+      overlay.classList.remove('active');
+    };
+    
+    toggle.addEventListener('click', () => {
+      drawer.classList.toggle('mobile-open');
+      overlay.classList.toggle('active');
+    });
+    
+    overlay.addEventListener('click', closeDrawer);
+    
+    document.getElementById('sidebar-compose-btn').addEventListener('click', closeDrawer);
+    document.getElementById('sidebar-nav').addEventListener('click', closeDrawer);
+  }
+  
   lucide.createIcons();
 });
