@@ -161,7 +161,9 @@
 }
 
 /* Float State */
-.field-label.floated {
+.field-label.floated,
+.field-input:focus ~ .field-label,
+.field-input:not(:placeholder-shown) ~ .field-label {
   top: 8px;
   font-size: 11px;
   font-weight: 600;
@@ -169,7 +171,9 @@
   letter-spacing: 0.02em;
 }
 
-.field-input.error ~ .field-label.floated {
+.field-input.error ~ .field-label.floated,
+.field-input.error:focus ~ .field-label,
+.field-input.error:not(:placeholder-shown) ~ .field-label {
   color: #D94B4B;
 }
 
@@ -361,6 +365,82 @@
 /* Hide elements on small screens */
 @media (max-width: 760px) {
   .hide-on-narrow { display: none !important; }
+}
+
+@media (max-width: 640px) {
+  /* Reduce outer padding of form layouts on mobile */
+  .flex-1.flex.items-center.justify-center {
+    padding: 1.5rem !important;
+  }
+  
+  /* Make sure headings resize beautifully on mobile */
+  h1 {
+    font-size: 2.25rem !important;
+    line-height: 2.75rem !important;
+  }
+  
+  /* Adjust form card spacing slightly for small screens */
+  #login-card, #register-card {
+    padding: 1rem 0 !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Make the sidebar a drawer on mobile/tablet */
+  #sidebar-drawer {
+    position: fixed;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    z-index: 50;
+    width: 280px;
+    min-width: 280px !important;
+    transition: left 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 0 30px rgba(35, 35, 35, 0.15);
+  }
+  
+  #sidebar-drawer.mobile-open {
+    left: 0 !important;
+  }
+  
+  /* Sidebar Overlay background */
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(35, 35, 35, 0.3);
+    backdrop-filter: blur(2px);
+    z-index: 40;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+  }
+  
+  .sidebar-overlay.active {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  /* Reduce general dashboard content margins on mobile */
+  #inbox-screen {
+    padding: 1.5rem !important;
+  }
+  #read-screen {
+    padding: 1.5rem !important;
+  }
+  
+  /* Make compose panel full screen on mobile */
+  #compose-panel {
+    bottom: 0 !important;
+    right: 0 !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
 }
 
 /* ==================== LANDING PAGE STYLING ==================== */

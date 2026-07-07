@@ -28,21 +28,34 @@
     }
   </script>
 </head>
-<body class="bg-[#F7F2EA] min-h-screen flex items-stretch sm-app overflow-hidden select-none">
+<body class="bg-[#F7F2EA] min-h-screen flex items-stretch sm-app overflow-y-auto select-none">
 
-  <div class="w-full flex min-h-screen anim-fadeIn">
+  <div class="w-full flex min-h-screen anim-fadeIn relative">
+    
+    <!-- Top Navbar Header -->
+    <header class="absolute top-0 left-0 w-full h-20 flex items-center justify-between px-6 md:px-12 z-50 pointer-events-none">
+      <a href="/" class="flex items-center gap-2.5 pointer-events-auto">
+        <div class="w-8.5 h-8.5 rounded-xl bg-gradient-to-br from-[#6B4EFF] to-[#8A6CFF] flex items-center justify-center shadow-[0_3px_8px_rgba(107,78,255,0.3)]">
+          <i data-lucide="shield-check" class="text-white w-[18px] h-[18px]"></i>
+        </div>
+        <span class="text-[17px] font-bold tracking-tight text-charcoal">SecureMail</span>
+      </a>
+      
+      <div class="flex items-center gap-4 pointer-events-auto">
+        <span class="hidden sm:inline text-[13.5px] font-semibold text-mediumGray">Already registered?</span>
+        <a href="/login" class="btn btn-secondary btn-grow" style="padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 700;">
+          <span>Sign In</span>
+        </a>
+      </div>
+    </header>
+
     <!-- Left Hero Banner (Trust points, branding) -->
     <div class="hide-on-narrow flex-1 relative overflow-hidden bg-gradient-to-br from-[#F2EDFF] via-[#EFE4D3] to-[#F7F2EA] p-12 flex flex-col justify-between">
       <div class="absolute w-[340px] h-[340px] rounded-full bg-[rgba(107,78,255,0.1)] blur-[50px] -top-20 -right-20 pointer-events-none"></div>
       <div class="absolute w-[260px] h-[260px] rounded-full bg-[rgba(138,108,255,0.12)] blur-[60px] -bottom-6 -left-10 pointer-events-none"></div>
 
-      <!-- Header Branding -->
-      <div class="flex items-center gap-2.5 relative z-10">
-        <div class="w-9 h-9 rounded-[11px] bg-gradient-to-br from-[#6B4EFF] to-[#8A6CFF] flex items-center justify-center shadow-[0_4px_10px_rgba(107,78,255,0.3)]">
-          <i data-lucide="shield-check" class="text-white w-[19px] h-[19px]"></i>
-        </div>
-        <span class="text-[18px] font-bold tracking-tight text-charcoal">SecureMail</span>
-      </div>
+      <!-- Spacer to offset top header navbar -->
+      <div class="h-10 relative z-10"></div>
 
       <!-- Middle Content -->
       <div class="flex flex-col justify-center max-w-[400px] flex-1 relative z-10 my-auto">
