@@ -1,0 +1,47 @@
+{
+  "expo": {
+    "name": "SecureMail",
+    "slug": "SecureMail",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F8F7FC"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.securemail.app",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to securely unlock SecureMail"
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#6B4EFF"
+      },
+      "edgeToEdgeEnabled": true,
+      "package": "com.securemail.app",
+      "permissions": [
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-secure-store",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow SecureMail to use Face ID for secure authentication"
+        }
+      ]
+    ]
+  }
+}

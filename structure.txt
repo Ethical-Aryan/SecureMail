@@ -1,4 +1,4 @@
-SecureMail/
+rSecureMail/
 │
 ├── backend/                         # Flask Backend (MVC)
 │   │
