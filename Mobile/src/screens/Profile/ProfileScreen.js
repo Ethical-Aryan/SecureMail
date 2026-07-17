@@ -53,8 +53,6 @@ export default function ProfileScreen({ navigation }) {
   }, [logout]);
 
   const menuItems = [
-    { icon: 'shield', label: 'Security Center', color: COLORS.primary, screen: 'SecurityCenter' },
-    { icon: 'bell', label: 'Notifications', color: COLORS.warning, screen: 'Notifications', badge: unreadCount },
     { icon: 'settings', label: 'Settings', color: COLORS.textSecondary, screen: 'SettingsTab' },
   ];
 

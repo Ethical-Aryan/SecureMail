@@ -47,8 +47,12 @@ export default function SplashScreen({ navigation }) {
 
     const timer = setTimeout(() => {
       if (isAuthenticated) {
-        navigation.replace('MainTabs');
-      } else if (hasSeenOnboarding) {
+        // RootNavigator will auto-switch to MainTabs, no action needed here.
+        // This screen won't even be visible if already authenticated.
+        return;
+      }
+
+      if (hasSeenOnboarding) {
         navigation.replace('Login');
       } else {
         navigation.replace('Onboarding');
@@ -74,14 +78,9 @@ export default function SplashScreen({ navigation }) {
           },
         ]}
       >
-        <LinearGradient
-          colors={COLORS.gradient.primary}
-          style={styles.logoGradient}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
+        <View style={styles.logoGradient}>
           <Feather name="shield" size={36} color="#FFFFFF" />
-        </LinearGradient>
+        </View>
       </Animated.View>
 
       <Animated.Text style={[styles.appName, { opacity: textOpacity }]}>
@@ -110,6 +109,7 @@ const styles = StyleSheet.create({
     borderRadius: 24,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: COLORS.primary,
   },
   appName: {
     ...TYPOGRAPHY.h2,

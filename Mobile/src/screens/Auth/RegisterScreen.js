@@ -35,15 +35,14 @@ export default function RegisterScreen({ navigation }) {
     const result = await register(email, password);
 
     if (result.success) {
-      // Auto-login after registration
+      // Auto-login after registration — RootNavigator will auto-switch to MainTabs
       const loginResult = await login(email, password);
-      if (loginResult.success) {
-        navigation.replace('MainTabs');
-      } else {
+      if (!loginResult.success) {
+        // If auto-login fails, show success screen so user can manually sign in
         setSuccess(true);
       }
     }
-  }, [email, password, confirmPassword, register, login, clearError, navigation]);
+  }, [email, password, confirmPassword, register, login, clearError]);
 
   if (success) {
     return (

@@ -23,6 +23,7 @@ const Input = memo(({
   style,
   inputStyle,
   containerStyle,
+  variant = 'default', // 'default' | 'underlined'
   onFocus,
   onBlur,
   returnKeyType,
@@ -53,14 +54,16 @@ const Input = memo(({
     ? COLORS.inputFocusBorder
     : COLORS.inputBorder;
 
+  const wrapperStyle = variant === 'underlined' 
+    ? [styles.underlinedWrapper, { borderBottomColor: borderColor }, isFocused && styles.underlinedFocused]
+    : [styles.inputWrapper, { borderColor }, isFocused && styles.focusedWrapper];
+
   return (
     <View style={[styles.container, containerStyle]}>
       {label && <Text style={styles.label}>{label}</Text>}
       <View
         style={[
-          styles.inputWrapper,
-          { borderColor },
-          isFocused && styles.focusedWrapper,
+          ...wrapperStyle,
           error && styles.errorWrapper,
           multiline && styles.multilineWrapper,
           style,
@@ -152,12 +155,21 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.inputBg,
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.inputBorder,
     paddingHorizontal: SPACING.md,
   },
   focusedWrapper: {
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
+  },
+  underlinedWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+    borderBottomWidth: 1,
+    paddingHorizontal: 0,
+    paddingVertical: SPACING.xs,
+  },
+  underlinedFocused: {
+    borderBottomWidth: 2,
   },
   errorWrapper: {
     borderColor: COLORS.danger,

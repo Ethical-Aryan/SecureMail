@@ -7,7 +7,7 @@ export const COLORS = {
   secondary: '#8B5CF6',
   secondaryLight: '#A78BFA',
 
-  background: '#F8F7FC',
+  background: '#F7F2EA', // Primary Beige
   backgroundDark: '#111827',
   surface: '#FFFFFF',
   surfaceDark: '#1F2937',
@@ -33,8 +33,8 @@ export const COLORS = {
   textInverse: '#FFFFFF',
   textLink: '#6B4EFF',
 
-  inputBg: '#F6F5FD',
-  inputBorder: '#E6E3FA',
+  inputBg: '#FFFFFF',
+  inputBorder: '#E5E7EB',
   inputFocusBorder: '#6B4EFF',
 
   overlay: 'rgba(0, 0, 0, 0.5)',
@@ -44,8 +44,8 @@ export const COLORS = {
   gradient: {
     primary: ['#6B4EFF', '#8B5CF6'],
     primaryReverse: ['#8B5CF6', '#6B4EFF'],
-    splash: ['#F8F7FC', '#EDE9FE', '#DDD6FE'],
-    onboarding: ['#F8F7FC', '#F3F0FF'],
+    splash: ['#F7F2EA', '#EAE0FE', '#DDD6FE'],
+    onboarding: ['#F7F2EA', '#F3F0FF'],
     card: ['#FFFFFF', '#FAFAFE'],
   },
 
@@ -57,93 +57,90 @@ export const COLORS = {
 };
 
 export const TYPOGRAPHY = {
-  fontFamily: Platform.select({
-    ios: 'System',
-    android: 'Roboto',
-  }),
+  fontFamily: 'Inter_400Regular',
 
   h1: {
+    fontFamily: 'Inter_800ExtraBold',
     fontSize: 32,
-    fontWeight: '800',
     lineHeight: 40,
     letterSpacing: -0.5,
   },
   h2: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 28,
-    fontWeight: '700',
     lineHeight: 36,
     letterSpacing: -0.3,
   },
   h3: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 24,
-    fontWeight: '700',
     lineHeight: 32,
   },
   h4: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 20,
-    fontWeight: '600',
     lineHeight: 28,
   },
   h5: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 18,
-    fontWeight: '600',
     lineHeight: 24,
   },
   body: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 16,
-    fontWeight: '400',
     lineHeight: 24,
   },
   bodyMedium: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 16,
-    fontWeight: '500',
     lineHeight: 24,
   },
   bodySemiBold: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
-    fontWeight: '600',
     lineHeight: 24,
   },
   bodySmall: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 14,
-    fontWeight: '400',
     lineHeight: 20,
   },
   bodySmallMedium: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 14,
-    fontWeight: '500',
     lineHeight: 20,
   },
   caption: {
+    fontFamily: 'Inter_400Regular',
     fontSize: 12,
-    fontWeight: '400',
     lineHeight: 16,
   },
   captionMedium: {
+    fontFamily: 'Inter_500Medium',
     fontSize: 12,
-    fontWeight: '500',
     lineHeight: 16,
   },
   captionBold: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 12,
-    fontWeight: '700',
     lineHeight: 16,
   },
   overline: {
+    fontFamily: 'Inter_700Bold',
     fontSize: 10,
-    fontWeight: '700',
     lineHeight: 14,
     letterSpacing: 1.5,
     textTransform: 'uppercase',
   },
   button: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 16,
-    fontWeight: '600',
     lineHeight: 22,
   },
   buttonSmall: {
+    fontFamily: 'Inter_600SemiBold',
     fontSize: 14,
-    fontWeight: '600',
     lineHeight: 20,
   },
 };

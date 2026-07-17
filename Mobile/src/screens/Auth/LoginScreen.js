@@ -3,7 +3,7 @@ import {
   View, Text, ScrollView, TouchableOpacity,
   KeyboardAvoidingView, StyleSheet, StatusBar, Platform,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
@@ -38,19 +38,13 @@ export default function LoginScreen({ navigation }) {
     }
 
     setFieldErrors({});
-    const result = await login(email, password);
-    if (result.success) {
-      navigation.replace('MainTabs');
-    }
+    await login(email, password);
   }, [email, password, login, clearError, navigation]);
 
   const handleBiometricLogin = useCallback(async () => {
     const credentials = await biometricLogin();
     if (credentials) {
-      const result = await login(credentials.email, credentials.password);
-      if (result.success) {
-        navigation.replace('MainTabs');
-      }
+      await login(credentials.email, credentials.password);
     }
   }, [biometricLogin, login, navigation]);
 
@@ -82,14 +76,9 @@ export default function LoginScreen({ navigation }) {
         >
           {/* Logo */}
           <View style={styles.logoRow}>
-            <LinearGradient
-              colors={COLORS.gradient.primary}
-              style={styles.logoBox}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
+            <View style={styles.logoBox}>
               <Feather name="shield" size={20} color="#FFFFFF" />
-            </LinearGradient>
+            </View>
             <Text style={styles.logoText}>SecureMail</Text>
           </View>
 
@@ -131,12 +120,19 @@ export default function LoginScreen({ navigation }) {
             onSubmitEditing={handleLogin}
           />
 
+          {/* Forgot Password */}
+          <TouchableOpacity
+            onPress={() => navigation.navigate('ForgotPassword')}
+            style={styles.forgotPasswordRow}
+          >
+            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
           {/* Continue Button */}
           <Button
             title="Continue"
             onPress={handleLogin}
             loading={isLoading}
-            icon="arrow-right"
             style={styles.loginButton}
           />
 
@@ -150,10 +146,10 @@ export default function LoginScreen({ navigation }) {
               </View>
 
               <Button
-                title={`Sign in with ${biometricType || 'Biometric'}`}
+                title={`Sign in with ${biometricType || 'Face ID'}`}
                 onPress={handleBiometricLogin}
                 variant="outline"
-                icon="smartphone"
+                icon="maximize"
                 iconPosition="left"
               />
             </>
@@ -201,6 +197,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
+    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -239,6 +236,16 @@ const styles = StyleSheet.create({
   loginButton: {
     marginTop: SPACING.sm,
     marginBottom: SPACING.lg,
+  },
+  forgotPasswordRow: {
+    alignSelf: 'flex-end',
+    marginBottom: SPACING.lg,
+    marginTop: -SPACING.xs,
+  },
+  forgotPasswordText: {
+    ...TYPOGRAPHY.bodySmallMedium,
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   dividerRow: {
     flexDirection: 'row',

@@ -1,5 +1,7 @@
 import os
 import re
+import redis
+import random
 from datetime import timedelta
 import sqlite3
 import mysql.connector
@@ -16,6 +18,8 @@ from crypto_vault import verify_passkey
 load_dotenv()
 
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static', static_url_path='/static')
+# Connect to Redis (Using protocol=2 for Windows compatibility)
+redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, protocol=2)
 
 # Configuration
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "super-secret-session-key-change-in-production")
@@ -490,6 +494,70 @@ def decrypt_email(email_id):
         }), 200
     else:
         return jsonify({"error": "Incorrect passkey"}), 401
+# forget password generate teh otp with the help for redis   
+@app.route('/forgot-password')
+def forgot_password_view():
+    return render_template('forgot_password.html')
+
+@app.route('/api/auth/forgot-password', methods=['POST'])
+def api_forgot_password():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip()
+    
+    if not email:
+        return jsonify({"error": "Email is required"}), 400
+        
+    # Check if user exists using your existing database logic
+    user = query_db("SELECT * FROM users WHERE email = %s", (email,), one=True)
+    if not user:
+        # Return success anyway to prevent malicious users from guessing emails
+        return jsonify({"message": "If that email is registered, an OTP has been sent."}), 200
+        
+    # Generate 6-digit OTP and store in Redis with 60-second TTL
+    otp = str(random.randint(100000, 999999))
+    redis_client.set(f"pwd_reset:{email}", otp, ex=60)
+    
+    # Print to terminal for testing
+    print(f"\n--- PASSWORD RESET ---")
+    print(f"Your OTP for {email} is: {otp}")
+    print(f"It expires in 60 seconds.")
+    print(f"----------------------\n")
+    
+    return jsonify({
+        "message": "If that email is registered, an OTP has been sent.",
+        "otp": otp
+    }), 200
+
+@app.route('/api/auth/reset-password', methods=['POST'])
+def api_reset_password():
+    data = request.get_json() or {}
+    email = data.get("email", "").strip()
+    otp = data.get("otp", "").strip()
+    new_password = data.get("new_password", "")
+    
+    if not email or not otp or not new_password:
+        return jsonify({"error": "Email, OTP, and new password are required"}), 400
+        
+    if len(new_password) < 8:
+        return jsonify({"error": "Password must be at least 8 characters long"}), 400
+        
+    # Fetch OTP from Redis
+    stored_otp = redis_client.get(f"pwd_reset:{email}")
+    
+    if not stored_otp:
+        return jsonify({"error": "OTP has expired or is invalid. Please request a new one."}), 400
+        
+    if str(otp) != str(stored_otp):
+        return jsonify({"error": "Invalid OTP. Try again."}), 400
+        
+    # Success! Hash new password using Argon2 and update database[cite: 1]
+    pw_hash = ph.hash(new_password)
+    execute_db("UPDATE users SET password_hash = %s WHERE email = %s", (pw_hash, email))
+    
+    # Clear the OTP from Redis manually for security
+    redis_client.delete(f"pwd_reset:{email}")
+    
+    return jsonify({"message": "Password reset successfully. You can now log in."}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

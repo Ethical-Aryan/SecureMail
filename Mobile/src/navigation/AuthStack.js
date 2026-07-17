@@ -4,6 +4,7 @@ import SplashScreen from '../screens/Auth/SplashScreen';
 import OnboardingScreen from '../screens/Auth/OnboardingScreen';
 import LoginScreen from '../screens/Auth/LoginScreen';
 import RegisterScreen from '../screens/Auth/RegisterScreen';
+import ForgotPasswordScreen from '../screens/Auth/ForgotPasswordScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -27,6 +28,12 @@ export default function AuthStack() {
         component={RegisterScreen}
         options={{ animation: 'slide_from_right' }}
       />
+      <Stack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+        options={{ animation: 'slide_from_right' }}
+      />
     </Stack.Navigator>
   );
 }
+
