@@ -2,8 +2,7 @@ import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import InboxScreen from '../screens/Inbox/InboxScreen';
 import EmailDetailScreen from '../screens/Inbox/EmailDetailScreen';
-import NotificationsScreen from '../screens/Notifications/NotificationsScreen';
-import SecurityCenterScreen from '../screens/Security/SecurityCenterScreen';
+import ComposeScreen from '../screens/Compose/ComposeScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -17,8 +16,12 @@ export default function InboxStack() {
     >
       <Stack.Screen name="InboxList" component={InboxScreen} />
       <Stack.Screen name="EmailDetail" component={EmailDetailScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="SecurityCenter" component={SecurityCenterScreen} />
+      <Stack.Screen 
+        name="ComposeTab" 
+        component={ComposeScreen} 
+        options={{ presentation: 'modal' }}
+      />
     </Stack.Navigator>
   );
 }
+

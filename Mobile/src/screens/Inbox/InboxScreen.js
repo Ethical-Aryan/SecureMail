@@ -2,44 +2,43 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { View, FlatList, TouchableOpacity, Text, StyleSheet, RefreshControl, StatusBar } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import EmailCard from '../../components/cards/EmailCard';
-import SearchBar from '../../components/inputs/SearchBar';
+import Avatar from '../../components/common/Avatar';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import EmptyView from '../../components/common/EmptyView';
 import ErrorView from '../../components/common/ErrorView';
 import useMail from '../../hooks/useMail';
 import useAuth from '../../hooks/useAuth';
-import { FOLDERS, FOLDER_LABELS } from '../../constants/constants';
-import { filterByFolder, searchEmails, countUnread, debounce, getGreeting } from '../../utils/helpers';
 
-const FOLDER_TABS = [
-  { key: FOLDERS.INBOX, label: 'Inbox', icon: 'inbox' },
-  { key: FOLDERS.SENT, label: 'Sent', icon: 'send' },
-  { key: FOLDERS.STARRED, label: 'Starred', icon: 'star' },
+const FILTER_TABS = [
+  { key: 'all', label: 'All' },
+  { key: 'unread', label: 'Unread' },
+  { key: 'encrypted', label: 'Encrypted' },
 ];
 
 export default function InboxScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { user } = useAuth();
-  const { emails, isLoading, isRefreshing, error, fetchEmails, toggleStar, markAsRead } = useMail();
+  const { emails, isLoading, isRefreshing, error, fetchEmails, toggleStar, markAsRead, deleteEmail } = useMail();
 
-  const [activeFolder, setActiveFolder] = useState(FOLDERS.INBOX);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeFilter, setActiveFilter] = useState('all');
 
   useEffect(() => {
     fetchEmails();
   }, [fetchEmails]);
 
   const filteredEmails = useMemo(() => {
-    let result = filterByFolder(emails, activeFolder);
-    if (searchQuery.trim()) {
-      result = searchEmails(result, searchQuery);
+    let result = emails;
+    if (activeFilter === 'unread') {
+      result = result.filter(e => e.unread);
+    } else if (activeFilter === 'encrypted') {
+      result = result.filter(e => e.locked);
     }
     return result;
-  }, [emails, activeFolder, searchQuery]);
+  }, [emails, activeFilter]);
 
-  const unreadCount = useMemo(() => countUnread(emails), [emails]);
+  const unreadCount = useMemo(() => emails.filter(e => e.unread).length, [emails]);
 
   const handleRefresh = useCallback(() => {
     fetchEmails(true);
@@ -56,37 +55,23 @@ export default function InboxScreen({ navigation }) {
     toggleStar(emailId, currentStarred);
   }, [toggleStar]);
 
-  const debouncedSearch = useCallback(
-    debounce((text) => setSearchQuery(text), 300),
-    []
-  );
+  const handleDeletePress = useCallback((emailId) => {
+    if (deleteEmail) deleteEmail(emailId);
+  }, [deleteEmail]);
 
   const renderEmailItem = useCallback(({ item }) => (
     <EmailCard
       email={item}
       onPress={handleEmailPress}
       onStar={handleStarPress}
+      onDelete={() => handleDeletePress(item.id)}
     />
-  ), [handleEmailPress, handleStarPress]);
+  ), [handleEmailPress, handleStarPress, handleDeletePress]);
 
   const keyExtractor = useCallback((item) => String(item.id), []);
 
   const getEmptyProps = () => {
-    if (searchQuery) {
-      return {
-        icon: 'search',
-        title: 'No results found',
-        message: `No emails matching "${searchQuery}"`,
-      };
-    }
-    switch (activeFolder) {
-      case FOLDERS.SENT:
-        return { icon: 'send', title: 'No sent emails', message: 'Emails you send will appear here' };
-      case FOLDERS.STARRED:
-        return { icon: 'star', title: 'No starred emails', message: 'Star important emails to find them here' };
-      default:
-        return { icon: 'inbox', title: 'Inbox is empty', message: 'New emails will appear here' };
-    }
+    return { icon: 'inbox', title: 'Inbox is empty', message: 'New emails will appear here' };
   };
 
   if (isLoading && emails.length === 0) {
@@ -117,58 +102,38 @@ export default function InboxScreen({ navigation }) {
 
       {/* Header */}
       <View style={styles.header}>
-        <View>
-          <Text style={styles.greeting}>{getGreeting()}</Text>
-          <Text style={styles.title}>
-            Inbox
-            {unreadCount > 0 && (
-              <Text style={styles.unreadCount}> ({unreadCount})</Text>
-            )}
-          </Text>
+        <View style={styles.headerLeft}>
+          <Avatar 
+            email={user?.email || 'user@example.com'} 
+            initials={user?.name ? user.name.substring(0,2).toUpperCase() : 'AM'} 
+            size={36} 
+          />
         </View>
-        <View style={styles.headerActions}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Notifications')}
-            style={styles.headerButton}
-          >
-            <Feather name="bell" size={20} color={COLORS.textPrimary} />
-            {unreadCount > 0 && <View style={styles.notifDot} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('SecurityCenter')}
-            style={styles.headerButton}
-          >
-            <Feather name="shield" size={20} color={COLORS.textPrimary} />
-          </TouchableOpacity>
-        </View>
+        <Text style={styles.title}>Inbox</Text>
+        <TouchableOpacity style={styles.headerRight}>
+          <Feather name="search" size={24} color={COLORS.textPrimary} />
+        </TouchableOpacity>
       </View>
 
-      {/* Search Bar */}
-      <SearchBar
-        value={searchQuery}
-        onChangeText={(text) => {
-          setSearchQuery(text);
-        }}
-        placeholder="Search emails..."
-      />
+      {/* Subheading */}
+      <View style={styles.subheadingRow}>
+        <Text style={styles.subheadingText}>
+          {unreadCount} unread · Encrypted inbox
+        </Text>
+      </View>
 
-      {/* Folder Tabs */}
+      {/* Filter Tabs */}
       <View style={styles.tabsContainer}>
-        {FOLDER_TABS.map((tab) => {
-          const isActive = activeFolder === tab.key;
+        {FILTER_TABS.map((tab) => {
+          const isActive = activeFilter === tab.key;
           return (
             <TouchableOpacity
               key={tab.key}
-              onPress={() => setActiveFolder(tab.key)}
+              onPress={() => setActiveFilter(tab.key)}
               style={[styles.tab, isActive && styles.activeTab]}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
             >
-              <Feather
-                name={tab.icon}
-                size={14}
-                color={isActive ? COLORS.primary : COLORS.textTertiary}
-              />
               <Text style={[styles.tabText, isActive && styles.activeTabText]}>
                 {tab.label}
               </Text>
@@ -201,6 +166,15 @@ export default function InboxScreen({ navigation }) {
         windowSize={10}
         removeClippedSubviews={true}
       />
+
+      {/* Floating Action Button */}
+      <TouchableOpacity
+        style={[styles.fab, { bottom: 16 }]}
+        onPress={() => navigation.navigate('ComposeTab')}
+        activeOpacity={0.8}
+      >
+        <Feather name="plus" size={24} color="#FFFFFF" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -213,85 +187,73 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    paddingHorizontal: SPACING.xl,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.sm,
+    alignItems: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.xs,
   },
-  greeting: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
+  headerLeft: {
+    width: 40,
+    alignItems: 'flex-start',
+  },
+  headerRight: {
+    width: 40,
+    alignItems: 'flex-end',
   },
   title: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
-  },
-  unreadCount: {
     ...TYPOGRAPHY.h4,
-    color: COLORS.primary,
+    color: COLORS.textPrimary,
+    fontWeight: '700',
   },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SPACING.sm,
+  subheadingRow: {
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.sm,
   },
-  headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  notifDot: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.danger,
-    borderWidth: 1.5,
-    borderColor: COLORS.card,
+  subheadingText: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
   },
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    paddingBottom: SPACING.md,
   },
   tab: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
+    paddingVertical: 8,
+    paddingHorizontal: 20,
     borderRadius: BORDER_RADIUS.full,
     marginRight: SPACING.sm,
-    backgroundColor: COLORS.card,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   activeTab: {
-    backgroundColor: '#EDE9FE',
+    backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
   tabText: {
-    ...TYPOGRAPHY.captionMedium,
-    color: COLORS.textTertiary,
-    marginLeft: SPACING.xs,
+    ...TYPOGRAPHY.bodySmallMedium,
+    color: COLORS.textPrimary,
   },
   activeTabText: {
-    color: COLORS.primary,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   listContent: {
-    paddingVertical: SPACING.xs,
-    paddingBottom: SPACING.xxxl,
+    paddingBottom: SPACING.xxxxl * 2,
   },
   emptyList: {
     flex: 1,
+  },
+  fab: {
+    position: 'absolute',
+    right: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...SHADOWS.colored,
   },
 });

@@ -37,12 +37,10 @@ const Button = memo(({
         accessibilityRole="button"
         accessibilityLabel={title}
       >
-        <LinearGradient
-          colors={isDisabled ? ['#A5A3B5', '#A5A3B5'] : COLORS.gradient.primary}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+        <View
           style={[
             styles.base,
+            { backgroundColor: isDisabled ? '#A5A3B5' : COLORS.primary },
             { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal },
             SHADOWS.colored,
           ]}
@@ -54,7 +52,7 @@ const Button = memo(({
               {icon && iconPosition === 'left' && (
                 <Feather name={icon} size={currentSize.fontSize} color={COLORS.textInverse} style={styles.iconLeft} />
               )}
-              <Text style={[styles.primaryText, { fontSize: currentSize.fontSize }, textStyle]}>
+              <Text style={[styles.primaryText, TYPOGRAPHY.button, { fontSize: currentSize.fontSize }, textStyle]}>
                 {title}
               </Text>
               {icon && iconPosition === 'right' && (
@@ -62,7 +60,7 @@ const Button = memo(({
               )}
             </View>
           )}
-        </LinearGradient>
+        </View>
       </TouchableOpacity>
     );
   }

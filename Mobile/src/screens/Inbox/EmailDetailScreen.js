@@ -4,13 +4,10 @@ import {
   StyleSheet, StatusBar, Alert, TextInput, Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import Avatar from '../../components/common/Avatar';
-import Badge from '../../components/common/Badge';
 import Button from '../../components/common/Button';
-import Card from '../../components/common/Card';
 import useMail from '../../hooks/useMail';
 import { formatFullDate } from '../../utils/helpers';
 
@@ -87,18 +84,21 @@ export default function EmailDetailScreen({ route, navigation }) {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
-          <Feather name="arrow-left" size={20} color={COLORS.textPrimary} />
+          <Feather name="arrow-left" size={24} color={COLORS.textPrimary} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={handleToggleStar} style={styles.headerBtn}>
             <Feather
               name="star"
-              size={20}
+              size={24}
               color={isStarred ? COLORS.warning : COLORS.textTertiary}
             />
           </TouchableOpacity>
           <TouchableOpacity onPress={handleDelete} style={styles.headerBtn}>
-            <Feather name="trash-2" size={20} color={COLORS.danger} />
+            <Feather name="trash-2" size={24} color={COLORS.textTertiary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.headerBtn}>
+            <Feather name="more-vertical" size={24} color={COLORS.textTertiary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -107,65 +107,60 @@ export default function EmailDetailScreen({ route, navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Subject */}
-        <View style={styles.subjectRow}>
-          <Text style={styles.subject}>{email.subject}</Text>
-          {email.locked && (
-            <Badge
-              text={decryptedBody ? 'Decrypted' : 'Encrypted'}
-              icon={decryptedBody ? 'unlock' : 'lock'}
-              variant={decryptedBody ? 'success' : 'encrypted'}
-            />
-          )}
+        {/* Sender Info */}
+        <View style={styles.senderContainer}>
+          <View style={styles.senderRow}>
+            <Avatar email={email.senderEmail} initials={email.initials} size={42} />
+            <View style={styles.senderInfo}>
+              <View style={styles.senderNameRow}>
+                <Text style={styles.senderNameLabel}>From: </Text>
+                <Text style={styles.senderNameValue}>{email.sender}</Text>
+              </View>
+              <View style={styles.senderNameRow}>
+                <Text style={styles.senderNameLabel}>To: </Text>
+                <Text style={styles.senderNameValue}>Me</Text>
+              </View>
+            </View>
+          </View>
         </View>
 
-        {/* Sender Info */}
-        <Card variant="default" padding={SPACING.lg} style={styles.senderCard}>
-          <View style={styles.senderRow}>
-            <Avatar email={email.senderEmail} initials={email.initials} size={44} />
-            <View style={styles.senderInfo}>
-              <Text style={styles.senderName}>{email.sender}</Text>
-              <Text style={styles.senderEmail}>{email.senderEmail}</Text>
-            </View>
-          </View>
-          <View style={styles.metaRow}>
-            <Feather name="clock" size={12} color={COLORS.textTertiary} />
-            <Text style={styles.metaText}>{formatFullDate(email.time)}</Text>
-          </View>
-          <View style={styles.metaRow}>
-            <Feather name="user" size={12} color={COLORS.textTertiary} />
-            <Text style={styles.metaText}>To: {email.owner_email || 'me'}</Text>
-          </View>
-        </Card>
+        {/* Subject & Time */}
+        <View style={styles.subjectContainer}>
+          <Text style={styles.subject}>{email.subject}</Text>
+          <Text style={styles.timeText}>Sent: {formatFullDate(email.time)}</Text>
+        </View>
 
-        {/* Encrypted Lock Overlay */}
-        {isLocked && (
-          <Card variant="outlined" padding={SPACING.xxl} style={styles.lockCard}>
-            <View style={styles.lockIconContainer}>
-              <LinearGradient
-                colors={COLORS.gradient.primary}
-                style={styles.lockIcon}
-              >
-                <Feather name="lock" size={28} color="#FFFFFF" />
-              </LinearGradient>
+        <View style={styles.divider} />
+
+        {/* Encrypted Lock Banner */}
+        {(email.locked || decryptedBody) && (
+          <View style={styles.encryptedBanner}>
+            <Feather name={decryptedBody ? "unlock" : "shield"} size={20} color={COLORS.success} />
+            <View style={styles.encryptedBannerTextContainer}>
+              <Text style={styles.encryptedBannerTitle}>
+                {decryptedBody ? "Decrypted Message" : "Encrypted Message"}
+              </Text>
+              <Text style={styles.encryptedBannerDesc}>
+                This message is protected by end-to-end encryption. Only you can read it.
+              </Text>
             </View>
-            <Text style={styles.lockTitle}>Encrypted Message</Text>
-            <Text style={styles.lockDescription}>
-              This message is protected with a passkey. Enter the passkey to decrypt and read.
-            </Text>
+          </View>
+        )}
+
+        {isLocked && (
+          <View style={styles.lockActionContainer}>
             <Button
-              title="Decrypt Message"
+              title="Enter Passkey to View"
               onPress={() => setShowDecryptModal(true)}
-              icon="unlock"
+              icon="lock"
               iconPosition="left"
-              style={styles.decryptButton}
             />
-          </Card>
+          </View>
         )}
 
         {/* Email Body */}
         {!isLocked && (
-          <Card variant="default" padding={SPACING.xl} style={styles.bodyCard}>
+          <View style={styles.bodyContainer}>
             {Array.isArray(displayBody) ? (
               displayBody.map((line, index) => (
                 <Text key={index} style={styles.bodyText}>
@@ -175,22 +170,20 @@ export default function EmailDetailScreen({ route, navigation }) {
             ) : (
               <Text style={styles.bodyText}>{displayBody}</Text>
             )}
-          </Card>
+          </View>
         )}
 
         {/* Attachment */}
         {displayAttachment && !isLocked && (
-          <Card variant="outlined" padding={SPACING.lg} style={styles.attachmentCard}>
-            <View style={styles.attachmentRow}>
-              <View style={styles.attachmentIcon}>
-                <Feather name="paperclip" size={18} color={COLORS.primary} />
-              </View>
-              <View style={styles.attachmentInfo}>
-                <Text style={styles.attachmentName}>{displayAttachment.name}</Text>
-                <Text style={styles.attachmentSize}>{displayAttachment.size}</Text>
-              </View>
+          <View style={styles.attachmentContainer}>
+            <View style={styles.attachmentIcon}>
+              <Feather name="file-text" size={24} color={COLORS.primary} />
             </View>
-          </Card>
+            <View style={styles.attachmentInfo}>
+              <Text style={styles.attachmentName}>{displayAttachment.name}</Text>
+              <Text style={styles.attachmentSize}>{displayAttachment.size}</Text>
+            </View>
+          </View>
         )}
       </ScrollView>
 
@@ -261,120 +254,115 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.md,
   },
   headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.xs,
   },
   headerActions: {
     flexDirection: 'row',
   },
   scrollContent: {
-    paddingHorizontal: SPACING.xl,
     paddingBottom: SPACING.xxxxl,
   },
-  subjectRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.lg,
+  senderContainer: {
+    paddingHorizontal: SPACING.xl,
     marginTop: SPACING.md,
-  },
-  subject: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.textPrimary,
-    flex: 1,
-    marginRight: SPACING.md,
-  },
-  senderCard: {
-    marginBottom: SPACING.lg,
   },
   senderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SPACING.md,
   },
   senderInfo: {
-    flex: 1,
     marginLeft: SPACING.md,
+    justifyContent: 'center',
   },
-  senderName: {
-    ...TYPOGRAPHY.bodySemiBold,
-    color: COLORS.textPrimary,
-  },
-  senderEmail: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
-    marginTop: 2,
-  },
-  metaRow: {
+  senderNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.xs,
+    marginBottom: 2,
   },
-  metaText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
-    marginLeft: SPACING.xs,
+  senderNameLabel: {
+    ...TYPOGRAPHY.bodySmall,
+    color: COLORS.textSecondary,
+    width: 45,
   },
-  lockCard: {
-    alignItems: 'center',
-    marginBottom: SPACING.lg,
+  senderNameValue: {
+    ...TYPOGRAPHY.bodySmallMedium,
+    color: COLORS.textPrimary,
   },
-  lockIconContainer: {
-    marginBottom: SPACING.xl,
+  subjectContainer: {
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
   },
-  lockIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  lockTitle: {
-    ...TYPOGRAPHY.h4,
+  subject: {
+    ...TYPOGRAPHY.h3,
     color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
-  lockDescription: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: SPACING.xxl,
-    lineHeight: 22,
+  timeText: {
+    ...TYPOGRAPHY.captionMedium,
+    color: COLORS.textTertiary,
   },
-  decryptButton: {
-    width: '100%',
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+    marginVertical: SPACING.lg,
+    marginHorizontal: SPACING.xl,
   },
-  bodyCard: {
+  encryptedBanner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: COLORS.successLight,
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.xl,
+    borderRadius: BORDER_RADIUS.md,
     marginBottom: SPACING.lg,
+  },
+  encryptedBannerTextContainer: {
+    flex: 1,
+    marginLeft: SPACING.md,
+  },
+  encryptedBannerTitle: {
+    ...TYPOGRAPHY.bodySmallMedium,
+    color: COLORS.success,
+    marginBottom: 4,
+  },
+  encryptedBannerDesc: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.success,
+    lineHeight: 18,
+  },
+  lockActionContainer: {
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.lg,
+  },
+  bodyContainer: {
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.md,
   },
   bodyText: {
     ...TYPOGRAPHY.body,
     color: COLORS.textPrimary,
     lineHeight: 26,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  attachmentCard: {
-    marginBottom: SPACING.lg,
-  },
-  attachmentRow: {
+  attachmentContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    padding: SPACING.lg,
+    marginHorizontal: SPACING.xl,
+    marginTop: SPACING.xl,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderRadius: BORDER_RADIUS.md,
   },
   attachmentIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 40,
+    height: 40,
+    borderRadius: 8,
     backgroundColor: '#EDE9FE',
     justifyContent: 'center',
     alignItems: 'center',

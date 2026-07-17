@@ -28,8 +28,7 @@ export default function SecurityCenterScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <Header
-        title="Security Center"
-        onBack={() => navigation.goBack()}
+        title="Vault"
       />
 
       <ScrollView

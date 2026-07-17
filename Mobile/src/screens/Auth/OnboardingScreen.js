@@ -8,6 +8,7 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import { ONBOARDING_SLIDES } from '../../constants/constants';
+import Button from '../../components/common/Button';
 import useAuth from '../../hooks/useAuth';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -131,22 +132,12 @@ export default function OnboardingScreen({ navigation }) {
       <View style={[styles.footer, { paddingBottom: insets.bottom + SPACING.xxl }]}>
         {renderDots()}
 
-        <TouchableOpacity
+        <Button
+          title={currentIndex === ONBOARDING_SLIDES.length - 1 ? 'Get Started' : 'Continue'}
           onPress={handleNext}
-          activeOpacity={0.85}
-          style={styles.continueWrapper}
-        >
-          <LinearGradient
-            colors={COLORS.gradient.primary}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.continueButton}
-          >
-            <Text style={styles.continueText}>
-              {currentIndex === ONBOARDING_SLIDES.length - 1 ? 'Get Started' : 'Continue'}
-            </Text>
-          </LinearGradient>
-        </TouchableOpacity>
+          variant="primary"
+          style={styles.continueButton}
+        />
       </View>
     </LinearGradient>
   );
@@ -168,6 +159,7 @@ const styles = StyleSheet.create({
   skipText: {
     ...TYPOGRAPHY.bodySmallMedium,
     color: COLORS.textSecondary,
+    fontWeight: '600',
   },
   slide: {
     flex: 1,
@@ -184,26 +176,30 @@ const styles = StyleSheet.create({
   },
   circle1: {
     position: 'absolute',
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    backgroundColor: 'rgba(107, 78, 255, 0.06)',
+    left: 0,
+    top: 0,
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: '#EBE5D9', // Darker beige
   },
   circle2: {
     position: 'absolute',
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(107, 78, 255, 0.1)',
+    right: 10,
+    bottom: 10,
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    backgroundColor: '#EAE0FE', // Light purple
   },
   iconBox: {
-    width: 80,
-    height: 80,
-    borderRadius: 24,
+    width: 90,
+    height: 90,
+    borderRadius: 28,
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    ...SHADOWS.lg,
+    ...SHADOWS.md,
   },
   title: {
     ...TYPOGRAPHY.h3,
@@ -231,18 +227,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     marginHorizontal: 4,
   },
-  continueWrapper: {
-    width: '100%',
-  },
   continueButton: {
-    paddingVertical: 16,
-    borderRadius: BORDER_RADIUS.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.colored,
-  },
-  continueText: {
-    ...TYPOGRAPHY.button,
-    color: COLORS.textInverse,
+    width: '100%',
   },
 });

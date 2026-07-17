@@ -41,7 +41,8 @@
         {
           "faceIDPermission": "Allow SecureMail to use Face ID for secure authentication"
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

@@ -22,7 +22,11 @@ export default function NotificationsScreen({ navigation }) {
     if (notification.emailId) {
       const email = emails.find((e) => e.id === notification.emailId);
       if (email) {
-        navigation.navigate('EmailDetail', { email });
+        // Navigate across tabs: go to InboxTab, then push EmailDetail
+        navigation.navigate('InboxTab', {
+          screen: 'EmailDetail',
+          params: { email },
+        });
       }
     }
   }, [emails, navigation]);
@@ -64,8 +68,7 @@ export default function NotificationsScreen({ navigation }) {
       <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
 
       <Header
-        title="Notifications"
-        onBack={() => navigation.goBack()}
+        title="Alerts"
       />
 
       <FlatList

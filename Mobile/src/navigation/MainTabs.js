@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, StyleSheet, Platform } from 'react-native';
+import { View, StyleSheet, Platform, Text } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../theme/theme';
 import InboxStack from './InboxStack';
-import ComposeScreen from '../screens/Compose/ComposeScreen';
-import ProfileScreen from '../screens/Profile/ProfileScreen';
-import SettingsScreen from '../screens/Settings/SettingsScreen';
+import SecurityCenterScreen from '../screens/Security/SecurityCenterScreen';
+import NotificationsScreen from '../screens/Notifications/NotificationsScreen';
+import ProfileStack from './ProfileStack';
 
 const Tab = createBottomTabNavigator();
 
@@ -24,14 +24,14 @@ export default function MainTabs() {
             case 'InboxTab':
               iconName = 'inbox';
               break;
-            case 'ComposeTab':
-              iconName = 'edit';
+            case 'VaultTab':
+              iconName = 'shield';
+              break;
+            case 'AlertsTab':
+              iconName = 'bell';
               break;
             case 'ProfileTab':
               iconName = 'user';
-              break;
-            case 'SettingsTab':
-              iconName = 'settings';
               break;
             default:
               iconName = 'circle';
@@ -65,19 +65,19 @@ export default function MainTabs() {
         options={{ tabBarLabel: 'Inbox' }}
       />
       <Tab.Screen
-        name="ComposeTab"
-        component={ComposeScreen}
-        options={{ tabBarLabel: 'Compose' }}
+        name="VaultTab"
+        component={SecurityCenterScreen}
+        options={{ tabBarLabel: 'Vault' }}
+      />
+      <Tab.Screen
+        name="AlertsTab"
+        component={NotificationsScreen}
+        options={{ tabBarLabel: 'Alerts' }}
       />
       <Tab.Screen
         name="ProfileTab"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{ tabBarLabel: 'Profile' }}
-      />
-      <Tab.Screen
-        name="SettingsTab"
-        component={SettingsScreen}
-        options={{ tabBarLabel: 'Settings' }}
       />
     </Tab.Navigator>
   );
@@ -104,8 +104,8 @@ const styles = StyleSheet.create({
     paddingTop: 6,
   },
   tabLabel: {
+    fontFamily: TYPOGRAPHY.captionMedium.fontFamily,
     fontSize: 11,
-    fontWeight: '600',
     marginTop: 2,
   },
   tabIconContainer: {
@@ -116,6 +116,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tabIconFocused: {
-    backgroundColor: '#EDE9FE',
+    backgroundColor: '#EDE9FE', // Light purple
   },
 });

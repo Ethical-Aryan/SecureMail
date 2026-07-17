@@ -114,5 +114,38 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+// ==============================================================
+// Public API — No JWT interceptor (for forgot-password, reset-password)
+// ==============================================================
 
+const publicApi = axios.create({
+  baseURL: API_BASE_URL,
+  timeout: TIMEOUTS.AUTH,
+  headers: {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+  },
+});
+
+// Response interceptor for publicApi — user-friendly error messages only
+publicApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (!error.response) {
+      if (error.code === 'ECONNABORTED') {
+        error.userMessage = ERROR_MESSAGES.TIMEOUT_ERROR;
+      } else if (error.message === 'Network Error') {
+        error.userMessage = ERROR_MESSAGES.NETWORK_ERROR;
+      } else {
+        error.userMessage = ERROR_MESSAGES.GENERIC;
+      }
+    } else {
+      const { status, data } = error.response;
+      error.userMessage = data?.error || (status >= 500 ? ERROR_MESSAGES.SERVER_ERROR : ERROR_MESSAGES.GENERIC);
+    }
+    return Promise.reject(error);
+  }
+);
+
+export { publicApi };
 export default api;

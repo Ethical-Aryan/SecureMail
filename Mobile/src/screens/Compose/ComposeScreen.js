@@ -7,7 +7,6 @@ import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import Input from '../../components/common/Input';
-import Button from '../../components/common/Button';
 import useMail from '../../hooks/useMail';
 import useApp from '../../hooks/useApp';
 import { validateComposeForm, validatePasskey } from '../../utils/validators';
@@ -78,10 +77,10 @@ export default function ComposeScreen({ navigation }) {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleDiscard} style={styles.headerBtn}>
-          <Feather name="x" size={22} color={COLORS.textPrimary} />
+        <TouchableOpacity onPress={handleDiscard} style={styles.headerLeftBtn}>
+          <Text style={styles.cancelText}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Compose</Text>
+        <Text style={styles.headerTitle}>New Message</Text>
         <TouchableOpacity
           onPress={handleSend}
           disabled={isSending}
@@ -101,61 +100,66 @@ export default function ComposeScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           {/* To */}
-          <Input
-            label="To"
-            value={recipient}
-            onChangeText={(t) => { setRecipient(t); setFieldErrors((p) => ({ ...p, recipient: null })); }}
-            placeholder="recipient@email.com"
-            icon="user"
-            keyboardType="email-address"
-            error={fieldErrors.recipient}
-            autoCapitalize="none"
-          />
+          <View style={styles.inputRow}>
+            <Text style={styles.rowLabel}>To:</Text>
+            <Input
+              value={recipient}
+              onChangeText={(t) => { setRecipient(t); setFieldErrors((p) => ({ ...p, recipient: null })); }}
+              placeholder=""
+              keyboardType="email-address"
+              error={fieldErrors.recipient}
+              autoCapitalize="none"
+              variant="underlined"
+              containerStyle={styles.underlinedInputContainer}
+            />
+          </View>
 
           {/* Subject */}
-          <Input
-            label="Subject"
-            value={subject}
-            onChangeText={(t) => { setSubject(t); setFieldErrors((p) => ({ ...p, subject: null })); }}
-            placeholder="Enter subject"
-            icon="type"
-            error={fieldErrors.subject}
-            maxLength={255}
-          />
+          <View style={styles.inputRow}>
+            <Text style={styles.rowLabel}>Subject:</Text>
+            <Input
+              value={subject}
+              onChangeText={(t) => { setSubject(t); setFieldErrors((p) => ({ ...p, subject: null })); }}
+              placeholder=""
+              error={fieldErrors.subject}
+              maxLength={255}
+              variant="underlined"
+              containerStyle={styles.underlinedInputContainer}
+            />
+          </View>
 
           {/* Body */}
           <Input
-            label="Message"
             value={body}
             onChangeText={(t) => { setBody(t); setFieldErrors((p) => ({ ...p, body: null })); }}
             placeholder="Write your message..."
             multiline
-            numberOfLines={8}
+            numberOfLines={12}
             error={fieldErrors.body}
+            variant="underlined"
+            containerStyle={styles.bodyInputContainer}
+            style={styles.bodyInputWrapper}
+            inputStyle={styles.bodyInputText}
           />
 
           {/* Encryption Toggle */}
           <View style={styles.encryptionCard}>
             <View style={styles.encryptionRow}>
               <View style={styles.encryptionLeft}>
-                <View style={styles.encryptionIcon}>
-                  <Feather name="lock" size={18} color={isEncrypted ? COLORS.primary : COLORS.textTertiary} />
-                </View>
-                <View>
-                  <Text style={styles.encryptionLabel}>Encrypt Message</Text>
-                  <Text style={styles.encryptionDescription}>
-                    Add passkey protection to this email
-                  </Text>
-                </View>
+                <Text style={styles.encryptionLabel}>Encrypt Message</Text>
+                <Switch
+                  value={isEncrypted}
+                  onValueChange={setIsEncrypted}
+                  trackColor={{ false: COLORS.border, true: '#C4B5FD' }}
+                  thumbColor={isEncrypted ? COLORS.primary : '#F4F3F4'}
+                  ios_backgroundColor={COLORS.border}
+                  style={styles.switch}
+                />
               </View>
-              <Switch
-                value={isEncrypted}
-                onValueChange={setIsEncrypted}
-                trackColor={{ false: COLORS.border, true: '#C4B5FD' }}
-                thumbColor={isEncrypted ? COLORS.primary : '#F4F3F4'}
-                ios_backgroundColor={COLORS.border}
-              />
             </View>
+            <Text style={styles.encryptionDescription}>
+              Passkey will be securely shared with recipient.
+            </Text>
 
             {isEncrypted && (
               <View style={styles.passkeySection}>
@@ -163,31 +167,14 @@ export default function ComposeScreen({ navigation }) {
                   label="Passkey"
                   value={passkey}
                   onChangeText={(t) => { setPasskey(t); setFieldErrors((p) => ({ ...p, passkey: null })); }}
-                  placeholder="Enter a passkey for this message"
-                  icon="key"
+                  placeholder="Enter a passkey"
                   secureTextEntry
                   error={fieldErrors.passkey}
                   containerStyle={styles.passkeyInput}
                 />
-                <View style={styles.passkeyHint}>
-                  <Feather name="info" size={12} color={COLORS.textTertiary} />
-                  <Text style={styles.passkeyHintText}>
-                    Share this passkey with the recipient separately
-                  </Text>
-                </View>
               </View>
             )}
           </View>
-
-          {/* Send Button */}
-          <Button
-            title={isSending ? 'Sending...' : 'Send Secure Email'}
-            onPress={handleSend}
-            loading={isSending}
-            icon="send"
-            iconPosition="left"
-            style={styles.sendButtonFull}
-          />
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
@@ -207,45 +194,72 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+  },
+  headerLeftBtn: {
     paddingVertical: SPACING.sm,
   },
-  headerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: COLORS.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+  cancelText: {
+    ...TYPOGRAPHY.bodySmallMedium,
+    color: COLORS.textPrimary,
   },
   headerTitle: {
     ...TYPOGRAPHY.h5,
     color: COLORS.textPrimary,
+    fontWeight: '700',
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.colored,
   },
   sendButtonDisabled: {
     backgroundColor: COLORS.textTertiary,
+    shadowOpacity: 0,
   },
   scrollContent: {
-    paddingHorizontal: SPACING.xxl,
-    paddingTop: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.xxxxl,
   },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: SPACING.md,
+  },
+  rowLabel: {
+    ...TYPOGRAPHY.bodyMedium,
+    color: COLORS.textSecondary,
+    marginRight: SPACING.md,
+    marginTop: 10,
+    width: 65,
+  },
+  underlinedInputContainer: {
+    flex: 1,
+    marginBottom: 0,
+  },
+  bodyInputContainer: {
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.xxxl,
+  },
+  bodyInputWrapper: {
+    borderBottomWidth: 0,
+  },
+  bodyInputText: {
+    ...TYPOGRAPHY.body,
+    fontSize: 16,
+    lineHeight: 24,
+    color: COLORS.textPrimary,
+  },
   encryptionCard: {
-    backgroundColor: COLORS.card,
+    backgroundColor: '#FFFFFF',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     marginBottom: SPACING.xxl,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
     ...SHADOWS.sm,
   },
   encryptionRow: {
@@ -256,26 +270,21 @@ const styles = StyleSheet.create({
   encryptionLeft: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     flex: 1,
   },
-  encryptionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: '#EDE9FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
   encryptionLabel: {
-    ...TYPOGRAPHY.bodySmallMedium,
+    ...TYPOGRAPHY.bodyMedium,
     color: COLORS.textPrimary,
     fontWeight: '600',
+  },
+  switch: {
+    transform: [{ scale: 0.9 }],
   },
   encryptionDescription: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
-    marginTop: 2,
+    marginTop: SPACING.xs,
   },
   passkeySection: {
     marginTop: SPACING.lg,
@@ -285,17 +294,5 @@ const styles = StyleSheet.create({
   },
   passkeyInput: {
     marginBottom: SPACING.sm,
-  },
-  passkeyHint: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  passkeyHintText: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
-    marginLeft: SPACING.xs,
-  },
-  sendButtonFull: {
-    marginTop: SPACING.sm,
   },
 });

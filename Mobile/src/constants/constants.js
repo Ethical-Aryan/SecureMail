@@ -6,13 +6,15 @@
 // IMPORTANT: Change this to your machine's LAN IP for development
 // Example: 'http://192.168.1.100:5000'
 // For production, use your deployed backend URL
-export const API_BASE_URL = 'http://10.123.156.52:5000';
+export const API_BASE_URL = 'http://10.247.160.52:5000';
 
 // API Endpoints (mapped from Flask backend)
 export const API_ENDPOINTS = {
   AUTH: {
     LOGIN: '/api/auth/login',
     REGISTER: '/api/auth/register',
+    FORGOT_PASSWORD: '/api/auth/forgot-password',
+    RESET_PASSWORD: '/api/auth/reset-password',
   },
   EMAILS: {
     LIST: '/api/emails',
@@ -159,6 +161,7 @@ export const SCREENS = {
   SETTINGS: 'Settings',
   SECURITY_CENTER: 'SecurityCenter',
   NOTIFICATIONS: 'Notifications',
+  FORGOT_PASSWORD: 'ForgotPassword',
 };
 
 // App Info
@@ -171,9 +174,9 @@ export const APP_INFO = {
 
 // Request Timeouts (ms)
 export const TIMEOUTS = {
-  DEFAULT: 15000,
+  DEFAULT: 5000,
   UPLOAD: 60000,
-  AUTH: 10000,
+  AUTH: 5000,
 };
 
 // Pagination
