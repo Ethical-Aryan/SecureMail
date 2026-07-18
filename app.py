@@ -12,7 +12,7 @@ from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from email_validator import validate_email, EmailNotValidError
 from dotenv import load_dotenv
-from crypto_vault import verify_passkey
+from crypto_vault import verify_passkey, encrypt_body, decrypt_body, hash_passkey
 
 # Load environment variables
 load_dotenv()
@@ -42,17 +42,22 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "securemail_db")
 
 def get_connection():
+    global DB_TYPE
     if DB_TYPE == "mysql":
-        return mysql.connector.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD,
-            database=MYSQL_DATABASE
-        )
-    else:
-        conn = sqlite3.connect(SQLITE_PATH)
-        conn.row_factory = sqlite3.Row
-        return conn
+        try:
+            return mysql.connector.connect(
+                host=MYSQL_HOST,
+                user=MYSQL_USER,
+                password=MYSQL_PASSWORD,
+                database=MYSQL_DATABASE
+            )
+        except Exception as e:
+            print(f"Warning: MySQL connection failed ({str(e)}). Falling back to SQLite...")
+            DB_TYPE = "sqlite"
+            
+    conn = sqlite3.connect(SQLITE_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
 def execute_db(query, args=()):
     is_mysql = (DB_TYPE == "mysql")
@@ -89,17 +94,23 @@ def query_db(query, args=(), one=False):
         conn.close()
 
 def init_db():
+    global DB_TYPE
     if DB_TYPE == "mysql":
-        conn = mysql.connector.connect(
-            host=MYSQL_HOST,
-            user=MYSQL_USER,
-            password=MYSQL_PASSWORD
-        )
-        cur = conn.cursor()
-        cur.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DATABASE}")
-        cur.close()
-        conn.close()
-        
+        try:
+            conn = mysql.connector.connect(
+                host=MYSQL_HOST,
+                user=MYSQL_USER,
+                password=MYSQL_PASSWORD
+            )
+            cur = conn.cursor()
+            cur.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DATABASE}")
+            cur.close()
+            conn.close()
+        except Exception as e:
+            print(f"Warning: MySQL initialization failed ({str(e)}). Falling back to SQLite...")
+            DB_TYPE = "sqlite"
+
+    if DB_TYPE == "mysql":
         create_user_table = """
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
@@ -328,11 +339,25 @@ def compose_email():
     if not recipient_email or not subject or not body:
         return jsonify({"error": "Recipient, subject, and body are required"}), 400
 
+    db_body = body
+    db_passkey = None
+    
+    if is_encrypted:
+        if not passkey:
+            return jsonify({"error": "Passkey is required for encryption"}), 400
+        try:
+            ciphertext, salt = encrypt_body(body, passkey)
+            hashed = hash_passkey(passkey, salt)
+            db_body = ciphertext
+            db_passkey = f"{salt}:{hashed}"
+        except Exception as e:
+            return jsonify({"error": f"Encryption failed: {str(e)}"}), 500
+
     recipient_row_id = execute_db(
         """INSERT INTO emails 
         (owner_email, sender_email, recipient_email, subject, body, passkey, is_encrypted, is_read, is_starred, folder, attachment_name, attachment_size) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-        (recipient_email, sender_email, recipient_email, subject, body, passkey, 1 if is_encrypted else 0, 0, 0, 'inbox', attachment_name, attachment_size)
+        (recipient_email, sender_email, recipient_email, subject, db_body, db_passkey, 1 if is_encrypted else 0, 0, 0, 'inbox', attachment_name, attachment_size)
     )
 
     sender_row_id = recipient_row_id
@@ -341,7 +366,7 @@ def compose_email():
             """INSERT INTO emails 
             (owner_email, sender_email, recipient_email, subject, body, passkey, is_encrypted, is_read, is_starred, folder, attachment_name, attachment_size) 
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (sender_email, sender_email, recipient_email, subject, body, passkey, 1 if is_encrypted else 0, 1, 0, 'sent', attachment_name, attachment_size)
+            (sender_email, sender_email, recipient_email, subject, db_body, db_passkey, 1 if is_encrypted else 0, 1, 0, 'sent', attachment_name, attachment_size)
         )
 
     return jsonify({
@@ -484,14 +509,19 @@ def decrypt_email(email_id):
         }), 200
 
     if verify_passkey(email["passkey"], input_passkey):
-        return jsonify({
-            "status": "decrypted",
-            "body": email["body"].split('\n') if email["body"] else [],
-            "attachment": {
-                "name": email["attachment_name"],
-                "size": email["attachment_size"]
-            } if email["attachment_name"] else None
-        }), 200
+        try:
+            salt_b64 = email["passkey"].split(':')[0]
+            decrypted_body = decrypt_body(email["body"], salt_b64, input_passkey)
+            return jsonify({
+                "status": "decrypted",
+                "body": decrypted_body.split('\n') if decrypted_body else [],
+                "attachment": {
+                    "name": email["attachment_name"],
+                    "size": email["attachment_size"]
+                } if email["attachment_name"] else None
+            }), 200
+        except Exception as e:
+            return jsonify({"error": f"Decryption failed: {str(e)}"}), 500
     else:
         return jsonify({"error": "Incorrect passkey"}), 401
 # forget password generate teh otp with the help for redis   

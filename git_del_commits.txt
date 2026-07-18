@@ -1,0 +1,28 @@
+that i have used to deleted his commits
+Here are the exact Git commands used to delete Sumit's commits and restore your repository history:
+
+Fetch Remote Changes: Fetched all remote commits from GitHub to inspect the remote branch status:
+
+bash
+git fetch --all
+Inspect Commit History: Logged all local and remote branches to visualize the history graph:
+
+bash
+git log --all --graph --oneline
+Reset Local HEAD: Pointed your local main branch HEAD to your latest local commit (ccef10d), skipping Sumit's commits:
+
+bash
+git reset --hard ccef10d
+Force Push: Overwrote the remote branch on GitHub with your local clean commit history:
+
+bash
+git push origin main --force
+
+
+# adding collaborators commit in ur code editor for eg vscode 
+
+# 1. Fetch the latest branches from GitHub
+git fetch origin
+
+# 2. Reset the local main branch to match the remote branch (bringing back Sumit's commits)
+git reset --hard origin/main
