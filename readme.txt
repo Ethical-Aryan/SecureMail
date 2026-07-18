@@ -34,17 +34,29 @@ Below is the layout of the repository as it currently stands, followed by the pl
 ```text
 SecureMail/
 ├── app.py                # Flask main backend entry point & REST API handlers
+├── crypto_vault.py       # AES-256-GCM encryption & PBKDF2 key derivation functions
+├── test_crypto.py        # Unit tests for the cryptographic functions
 ├── requirements.txt      # Python dependencies list
-├── .env                  # Environment configuration settings
+├── .env                  # Environment configuration settings (ignored by Git)
 ├── securemail.db         # SQLite local database (generated automatically)
 ├── structure.txt         # Roadmap specification for modular expansion
-└── web/                  # Static frontend files (served by Flask)
-    ├── index.html        # App interface (login, register, dashboard layouts)
-    ├── css/
-    │   └── style.css     # Dark mode style rules (vibrant accents & glow effects)
-    └── js/
-        └── app.js        # Authentication handlers, JWT verification, password meter
+├── git.txt               # Git command cheat sheet and developer workflow logs
+├── Mobile/               # React Native mobile application codebase
+└── web/                  # Web frontend files served by Flask
+    ├── templates/        # HTML templates for rendering views
+    │   ├── index.html    # Core homepage/redirect interface
+    │   ├── login.html    # Login view with glassmorphism UI
+    │   ├── register.html # Registration view with password strength meter
+    │   └── dashboard.html# User dashboard view for viewing and composing encrypted emails
+    └── static/           # Static assets
+        ├── css/
+        │   └── style.css # Custom dark theme styles (vibrant gradients & glassmorphism)
+        └── js/
+            ├── login.js  # JavaScript handler for user authentication
+            ├── register.js# JavaScript handler for user registration & strength meter
+            └── dashboard.js# JavaScript handler for viewing, composing, and decrypting emails
 ```
+
 
 ### Planned Roadmap Structure (from `structure.txt`)
 To support scaling and a dedicated React Native mobile app, the repository is designed to split into:
