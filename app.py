@@ -33,31 +33,44 @@ CORS(app, resources={r"/api/*": {"origins": "*"}})
 # JWT Manager
 jwt_manager = JWTManager(app)
 
+ 
 # Database Switcher (defaults to SQLite for easy local setup)
+load_dotenv(override=True)
+
 DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
-SQLITE_PATH = os.getenv("SQLITE_PATH", "securemail.db")
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "securemail_db")
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "15109"))
+MYSQL_USER = os.getenv("MYSQL_USER")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+SQLITE_PATH = os.path.join(BASE_DIR, "securemail.db")
 
 def get_connection():
     global DB_TYPE
+
     if DB_TYPE == "mysql":
         try:
             return mysql.connector.connect(
                 host=MYSQL_HOST,
+                port=MYSQL_PORT,
                 user=MYSQL_USER,
                 password=MYSQL_PASSWORD,
-                database=MYSQL_DATABASE
+                database=MYSQL_DATABASE,
+                ssl_disabled=False,
+                connection_timeout=10
             )
+
         except Exception as e:
-            print(f"Warning: MySQL connection failed ({str(e)}). Falling back to SQLite...")
+            print(f"❌ MySQL connection failed: {e}")
+            print("⚠️ Falling back to SQLite...")
             DB_TYPE = "sqlite"
-            
+
     conn = sqlite3.connect(SQLITE_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def execute_db(query, args=()):
     is_mysql = (DB_TYPE == "mysql")
@@ -99,9 +112,11 @@ def init_db():
         try:
             conn = mysql.connector.connect(
                 host=MYSQL_HOST,
+                port=MYSQL_PORT,
                 user=MYSQL_USER,
-                password=MYSQL_PASSWORD
-            )
+                password=MYSQL_PASSWORD,
+                ssl_disabled=False,
+                connection_timeout=10)
             cur = conn.cursor()
             cur.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DATABASE}")
             cur.close()
