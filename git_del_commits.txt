@@ -21,8 +21,45 @@ git push origin main --force
 
 # adding collaborators commit in ur code editor for eg vscode 
 
-# 1. Fetch the latest branches from GitHub
-git fetch origin
+# Check the current status of your repository
+git status
 
-# 2. Reset the local main branch to match the remote branch (bringing back Sumit's commits)
-git reset --hard origin/main
+# Download the latest changes from GitHub
+git pull origin main
+
+# Stage (add) all modified, new, and deleted files
+git add .
+
+# Create a new commit with a meaningful message
+git commit -m "Describe your changes"
+
+# Upload your commit to the GitHub repository
+git push origin main
+
+# View commit history in a compact graph format
+git log --oneline --graph --decorate
+
+# Check the current branch
+git branch
+
+# Show all remote branches
+git branch -r
+
+# Show the configured remote repository URLs
+git remote -v
+
+# Check the status again to confirm everything is up to date
+git status
+
+# good for daily workflow 
+# Get the latest code from GitHub
+git pull origin main
+
+# Add all your changes
+git add .
+
+# Save your changes as a commit
+git commit -m "Your commit message"
+
+# Push your changes to GitHub
+git push origin main
