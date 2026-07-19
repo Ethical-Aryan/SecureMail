@@ -72,8 +72,7 @@ def get_connection():
 
         except Exception as e:
             print(f"❌ MySQL connection failed: {e}")
-            print("⚠️ Falling back to SQLite...")
-            DB_TYPE = "sqlite"
+            raise Exception(f"Database connection failed: {e}")
 
     conn = sqlite3.connect(SQLITE_PATH)
     conn.row_factory = sqlite3.Row
