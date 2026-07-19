@@ -38,10 +38,15 @@ jwt_manager = JWTManager(app)
 @jwt_manager.token_in_blocklist_loader
 def check_if_token_is_revoked(jwt_header, jwt_payload: dict):
     jti = jwt_payload["jti"]
-    token_in_redis = redis_client.get(f"revoked_token:{jti}")
-    return token_in_redis is not None
+    if redis_client:
+        try:
+            token_in_redis = redis_client.get(f"revoked_token:{jti}")
+            return token_in_redis is not None
+        except Exception as e:
+            print(f"Redis blocklist error: {e}")
+            return False
+    return False
 
- 
 # Database Switcher (defaults to SQLite for easy local setup)
 load_dotenv(override=True)
 
@@ -67,6 +72,7 @@ def get_connection():
                 password=MYSQL_PASSWORD,
                 database=MYSQL_DATABASE,
                 ssl_disabled=False,
+                ssl_verify_cert=False,
                 connection_timeout=10
             )
 
@@ -123,6 +129,7 @@ def init_db():
                 user=MYSQL_USER,
                 password=MYSQL_PASSWORD,
                 ssl_disabled=False,
+                ssl_verify_cert=False,
                 connection_timeout=10)
             cur = conn.cursor()
             cur.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DATABASE}")
@@ -298,7 +305,11 @@ def refresh():
 @jwt_required()
 def logout():
     access_jti = get_jwt()["jti"]
-    redis_client.setex(f"revoked_token:{access_jti}", timedelta(minutes=jwt_minutes), "true")
+    try:
+        if redis_client:
+            redis_client.setex(f"revoked_token:{access_jti}", timedelta(minutes=jwt_minutes), "true")
+    except Exception as e:
+        print(f"Redis logout error: {e}")
     
     data = request.get_json(silent=True) or {}
     refresh_token = data.get("refresh_token")
@@ -307,9 +318,10 @@ def logout():
             from flask_jwt_extended import decode_token
             decoded_refresh = decode_token(refresh_token)
             refresh_jti = decoded_refresh["jti"]
-            redis_client.setex(f"revoked_token:{refresh_jti}", timedelta(days=30), "true")
-        except Exception:
-            pass
+            if redis_client:
+                redis_client.setex(f"revoked_token:{refresh_jti}", timedelta(days=30), "true")
+        except Exception as e:
+            print(f"Redis logout error: {e}")
 
     return jsonify({"success": True, "message": "Successfully logged out"}), 200
 
