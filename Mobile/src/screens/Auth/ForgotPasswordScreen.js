@@ -38,11 +38,6 @@ export default function ForgotPasswordScreen({ navigation }) {
   const cardScale = useRef(new Animated.Value(0.95)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
 
-  // In-app Notification Animations
-  const notificationY = useRef(new Animated.Value(-150)).current;
-  const notificationOpacityAnim = useRef(new Animated.Value(0)).current;
-  const [notificationOtp, setNotificationOtp] = useState(null);
-
   // Mount animation
   useEffect(() => {
     Animated.parallel([
@@ -113,59 +108,6 @@ export default function ForgotPasswordScreen({ navigation }) {
     });
   }, [fadeAnim, slideAnim]);
 
-  // ─── Notification Handlers ──────────────────────────────
-  const hideNotification = useCallback(() => {
-    Animated.parallel([
-      Animated.timing(notificationY, {
-        toValue: -150,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(notificationOpacityAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      })
-    ]).start(() => {
-      setNotificationOtp(null);
-    });
-  }, [notificationY, notificationOpacityAnim]);
-
-  const triggerNotification = useCallback((otpCode) => {
-    setNotificationOtp(otpCode);
-    
-    // Auto-fill OTP into the input field for maximum user convenience
-    setOtp(otpCode);
-    
-    // Animate notification sliding down
-    Animated.parallel([
-      Animated.spring(notificationY, {
-        toValue: 10,
-        useNativeDriver: true,
-        bounciness: 8,
-      }),
-      Animated.timing(notificationOpacityAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      })
-    ]).start();
-
-    // Auto-hide after 8 seconds
-    const timer = setTimeout(() => {
-      hideNotification();
-    }, 8000);
-
-    return () => clearTimeout(timer);
-  }, [notificationY, notificationOpacityAnim, hideNotification]);
-
-  const handleNotificationTap = useCallback(() => {
-    if (notificationOtp) {
-      setOtp(notificationOtp);
-      hideNotification();
-    }
-  }, [notificationOtp, hideNotification]);
-
   // ─── Step 1: Request OTP ─────────────────────────────────
   const handleRequestOtp = useCallback(async () => {
     setApiError(null);
@@ -182,19 +124,13 @@ export default function ForgotPasswordScreen({ navigation }) {
     try {
       const data = await authService.requestPasswordReset(email);
       setApiSuccess(data.message || 'OTP sent! Check the server terminal.');
-      
-      // If server returned OTP, trigger the push-like notification banner
-      if (data && data.otp) {
-        triggerNotification(data.otp);
-      }
-      
       transitionToStep2();
     } catch (error) {
       setApiError(error.userMessage || 'Failed to send OTP. Please try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [email, transitionToStep2, triggerNotification]);
+  }, [email, transitionToStep2]);
 
   // ─── Step 2: Reset Password ──────────────────────────────
   const handleResetPassword = useCallback(async () => {
@@ -245,14 +181,8 @@ export default function ForgotPasswordScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      const data = await authService.requestPasswordReset(email);
+      await authService.requestPasswordReset(email);
       setApiSuccess('A new OTP has been sent.');
-      
-      // If server returned OTP, trigger the push-like notification banner
-      if (data && data.otp) {
-        triggerNotification(data.otp);
-      }
-
       setCountdown(OTP_EXPIRY_SECONDS);
       setCanResend(false);
 
@@ -272,7 +202,7 @@ export default function ForgotPasswordScreen({ navigation }) {
     } finally {
       setIsLoading(false);
     }
-  }, [email, canResend, triggerNotification]);
+  }, [email, canResend]);
 
   // ─── Format countdown ────────────────────────────────────
   const formatCountdown = (seconds) => {
@@ -493,39 +423,6 @@ export default function ForgotPasswordScreen({ navigation }) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      {/* ─── Push Notification Dropdown Banner ─────────────────── */}
-      {notificationOtp && (
-        <Animated.View 
-          style={[
-            styles.notificationContainer, 
-            { 
-              transform: [{ translateY: notificationY }], 
-              opacity: notificationOpacityAnim,
-              top: insets.top + SPACING.sm
-            }
-          ]}
-        >
-          <TouchableOpacity 
-            activeOpacity={0.9} 
-            onPress={handleNotificationTap}
-            style={styles.notificationCard}
-          >
-            <View style={styles.notificationIconContainer}>
-              <Feather name="bell" size={16} color="#FFFFFF" />
-            </View>
-            <View style={styles.notificationContent}>
-              <Text style={styles.notificationTitle}>SecureMail System Alert</Text>
-              <Text style={styles.notificationText}>
-                Your requested verification OTP is <Text style={styles.notificationCode}>{notificationOtp}</Text>. Tap to copy/fill.
-              </Text>
-            </View>
-            <TouchableOpacity onPress={hideNotification} style={styles.notificationClose}>
-              <Feather name="x" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Animated.View>
-      )}
     </LinearGradient>
   );
 }
@@ -703,65 +600,5 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.bodySmallMedium,
     color: COLORS.primary,
     fontWeight: '600',
-  },
-
-  // ─── Notification Styles ───────────────────────────────
-  notificationContainer: {
-    position: 'absolute',
-    left: SPACING.xl,
-    right: SPACING.xl,
-    zIndex: 10000,
-  },
-  notificationCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E1B4B', // Rich dark indigo background
-    borderRadius: BORDER_RADIUS.lg,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    borderWidth: 1.5,
-    borderColor: 'rgba(107, 78, 255, 0.45)',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#6B4EFF',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
-      },
-      android: { elevation: 12 },
-    }),
-  },
-  notificationIconContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.md,
-  },
-  notificationContent: {
-    flex: 1,
-  },
-  notificationTitle: {
-    ...TYPOGRAPHY.bodySmallMedium,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-  notificationText: {
-    ...TYPOGRAPHY.caption,
-    color: '#E0D4F5',
-    marginTop: 2,
-    lineHeight: 16,
-  },
-  notificationCode: {
-    fontWeight: '850',
-    color: '#F59E0B', // Bright golden yellow
-    fontSize: 13,
-  },
-  notificationClose: {
-    padding: SPACING.xs,
-    marginLeft: SPACING.xs,
   },
 });

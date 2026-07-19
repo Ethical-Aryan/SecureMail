@@ -64,6 +64,28 @@ const authService = {
     });
     return response.data;
   },
+
+  /**
+   * POST /api/auth/refresh
+   * Returns: { success, access_token }
+   * Uses publicApi to pass the refresh token in the header manually
+   */
+  async refresh(refreshToken) {
+    const response = await publicApi.post(API_ENDPOINTS.AUTH.REFRESH, {}, {
+      headers: { Authorization: `Bearer ${refreshToken}` },
+    });
+    return response.data;
+  },
+
+  /**
+   * POST /api/auth/logout
+   * Returns: { success, message }
+   * Uses api (attaches access_token automatically)
+   */
+  async logout() {
+    const response = await api.post(API_ENDPOINTS.AUTH.LOGOUT);
+    return response.data;
+  },
 };
 
 export default authService;

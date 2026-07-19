@@ -26,12 +26,20 @@ app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "super-secret-session-key-cha
 app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY", "super-secret-jwt-key-change-in-production")
 jwt_minutes = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRES_MINUTES", "60"))
 app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(minutes=jwt_minutes)
+app.config["JWT_REFRESH_TOKEN_EXPIRES"] = timedelta(days=30)
 
 # CORS
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 # JWT Manager
 jwt_manager = JWTManager(app)
+
+# [ADDED FOR MOBILE] Redis token blocklist loader for secure mobile logout
+@jwt_manager.token_in_blocklist_loader
+def check_if_token_is_revoked(jwt_header, jwt_payload: dict):
+    jti = jwt_payload["jti"]
+    token_in_redis = redis_client.get(f"revoked_token:{jti}")
+    return token_in_redis is not None
 
  
 # Database Switcher (defaults to SQLite for easy local setup)
@@ -266,6 +274,45 @@ def login():
         "access_token": access_token,
         "refresh_token": refresh_token
     }), 200
+
+# [ADDED FOR MOBILE] Refresh token endpoint to support secure biometric login without passwords
+@app.route('/api/auth/refresh', methods=['POST'])
+@jwt_required(refresh=True)
+def refresh():
+    current_user_id = get_jwt_identity()
+    user = query_db("SELECT id, email FROM users WHERE id = %s", (current_user_id,), one=True)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    access_token = create_access_token(identity=current_user_id, additional_claims={"email": user["email"]})
+    return jsonify({
+        "success": True,
+        "access_token": access_token,
+        "user": {
+            "id": user["id"],
+            "email": user["email"]
+        }
+    }), 200
+
+# [ADDED FOR MOBILE] Secure logout endpoint to explicitly revoke mobile access and refresh tokens
+@app.route('/api/auth/logout', methods=['POST'])
+@jwt_required()
+def logout():
+    access_jti = get_jwt()["jti"]
+    redis_client.setex(f"revoked_token:{access_jti}", timedelta(minutes=jwt_minutes), "true")
+    
+    data = request.get_json(silent=True) or {}
+    refresh_token = data.get("refresh_token")
+    if refresh_token:
+        try:
+            from flask_jwt_extended import decode_token
+            decoded_refresh = decode_token(refresh_token)
+            refresh_jti = decoded_refresh["jti"]
+            redis_client.setex(f"revoked_token:{refresh_jti}", timedelta(days=30), "true")
+        except Exception:
+            pass
+
+    return jsonify({"success": True, "message": "Successfully logged out"}), 200
 
 # ------------------------------------------------------------------
 # Emails APIs

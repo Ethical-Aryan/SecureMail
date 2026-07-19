@@ -86,10 +86,11 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     async function restoreAuth() {
       try {
-        const [token, userData, seenOnboarding] = await Promise.all([
+        const [token, userData, seenOnboarding, isBiometricEnabled] = await Promise.all([
           secureStorage.getAccessToken(),
           secureStorage.getUserData(),
           secureStorage.hasSeenOnboarding(),
+          secureStorage.isBiometricEnabled(),
         ]);
 
         dispatch({
@@ -98,6 +99,21 @@ export function AuthProvider({ children }) {
         });
 
         if (token && userData) {
+          if (isBiometricEnabled) {
+            const LocalAuthentication = require('expo-local-authentication');
+            const result = await LocalAuthentication.authenticateAsync({
+              promptMessage: 'Authenticate to unlock SecureMail',
+              cancelLabel: 'Cancel',
+              disableDeviceFallback: false,
+              fallbackLabel: 'Use Passcode',
+            });
+            
+            if (!result.success) {
+              // Biometric failed or cancelled. Do not restore token.
+              dispatch({ type: AUTH_ACTIONS.RESTORE_TOKEN, payload: null });
+              return;
+            }
+          }
           dispatch({ type: AUTH_ACTIONS.RESTORE_TOKEN, payload: userData });
         } else {
           dispatch({ type: AUTH_ACTIONS.RESTORE_TOKEN, payload: null });
@@ -143,7 +159,39 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  const biometricLogin = useCallback(async (refreshToken) => {
+    dispatch({ type: AUTH_ACTIONS.SET_LOADING, payload: true });
+    dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+
+    try {
+      const data = await authService.refresh(refreshToken);
+
+      await secureStorage.setTokens(data.access_token, refreshToken);
+      await secureStorage.setUserData(data.user);
+
+      dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: data.user });
+      return { success: true, data };
+    } catch (error) {
+      const message = error.userMessage || error.response?.data?.error || 'Biometric login failed';
+      dispatch({ type: AUTH_ACTIONS.SET_ERROR, payload: message });
+      
+      // If the refresh token is invalid, clear credentials
+      try {
+        await secureStorage.clearTokens();
+        await secureStorage.clearUserData();
+      } catch (e) {}
+
+      return { success: false, error: message };
+    }
+  }, []);
+
   const logout = useCallback(async () => {
+    try {
+      await authService.logout();
+    } catch (error) {
+      // Ignore network errors during logout
+    }
+
     try {
       await secureStorage.clearTokens();
       await secureStorage.clearUserData();
@@ -166,12 +214,13 @@ export function AuthProvider({ children }) {
     () => ({
       ...state,
       login,
+      biometricLogin,
       register,
       logout,
       clearError,
       setOnboardingSeen,
     }),
-    [state, login, register, logout, clearError, setOnboardingSeen]
+    [state, login, biometricLogin, register, logout, clearError, setOnboardingSeen]
   );
 
   return (

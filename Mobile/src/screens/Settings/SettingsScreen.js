@@ -19,13 +19,17 @@ export default function SettingsScreen({ navigation }) {
 
   const handleBiometricToggle = useCallback(async (value) => {
     if (value) {
-      // Need credentials to store for biometric login
-      showToast('Enable biometric login from the login screen', 'info');
+      const success = await enableBiometric();
+      if (success) {
+        showToast('App lock enabled', 'success');
+      } else {
+        showToast('Failed to enable app lock', 'error');
+      }
     } else {
       await disableBiometric();
-      showToast('Biometric login disabled', 'info');
+      showToast('App lock disabled', 'info');
     }
-  }, [enableBiometric, disableBiometric, showToast, user]);
+  }, [enableBiometric, disableBiometric, showToast]);
 
   const settingsSections = [
     {
@@ -49,7 +53,7 @@ export default function SettingsScreen({ navigation }) {
       items: [
         {
           icon: 'smartphone',
-          label: biometricType || 'Biometric Login',
+          label: biometricType ? `${biometricType} App Lock` : 'Biometric App Lock',
           description: biometricAvailable
             ? `Use ${biometricType || 'biometric'} to unlock`
             : 'Not available on this device',

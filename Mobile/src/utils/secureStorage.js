@@ -88,31 +88,6 @@ const secureStorage = {
     return this.removeItem(STORAGE_KEYS.USER_DATA);
   },
 
-  // Biometric Credentials
-  async setBiometricCredentials(email, password) {
-    await Promise.all([
-      this.setItem(STORAGE_KEYS.STORED_EMAIL, email),
-      this.setItem(STORAGE_KEYS.STORED_PASSWORD, password),
-    ]);
-  },
-
-  async getBiometricCredentials() {
-    const [email, password] = await Promise.all([
-      this.getItem(STORAGE_KEYS.STORED_EMAIL),
-      this.getItem(STORAGE_KEYS.STORED_PASSWORD),
-    ]);
-    if (email && password) {
-      return { email, password };
-    }
-    return null;
-  },
-
-  async clearBiometricCredentials() {
-    await Promise.all([
-      this.removeItem(STORAGE_KEYS.STORED_EMAIL),
-      this.removeItem(STORAGE_KEYS.STORED_PASSWORD),
-    ]);
-  },
 
   // Onboarding
   async setOnboardingSeen() {
@@ -132,6 +107,18 @@ const secureStorage = {
   async isBiometricEnabled() {
     const value = await this.getItem(STORAGE_KEYS.BIOMETRIC_ENABLED);
     return value === 'true';
+  },
+
+  async setBiometricToken(token) {
+    return this.setItem(STORAGE_KEYS.BIOMETRIC_TOKEN, token);
+  },
+
+  async getBiometricToken() {
+    return this.getItem(STORAGE_KEYS.BIOMETRIC_TOKEN);
+  },
+
+  async clearBiometricToken() {
+    return this.removeItem(STORAGE_KEYS.BIOMETRIC_TOKEN);
   },
 
   // Theme

@@ -15,15 +15,41 @@ const api = axios.create({
   },
 });
 
-// Track if we're currently handling a 401 to prevent loops
-let isLoggingOut = false;
-
 // Auth event listeners (set by AuthContext)
 let onUnauthorized = null;
 
 export function setOnUnauthorized(callback) {
   onUnauthorized = callback;
 }
+
+// Token refresh state
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
+const forceLogout = async (error, data) => {
+  try {
+    await secureStorage.clearTokens();
+    await secureStorage.clearUserData();
+    if (onUnauthorized) {
+      onUnauthorized();
+    }
+  } catch (e) {
+    // Ignore storage errors on logout
+  }
+  error.userMessage = data?.error || ERROR_MESSAGES.UNAUTHORIZED;
+  return Promise.reject(error);
+};
 
 // ==============================================================
 // Request Interceptor — Attach JWT
@@ -70,20 +96,51 @@ api.interceptors.response.use(
     switch (status) {
       case 401:
         // Unauthorized — token expired or invalid
-        if (!isLoggingOut) {
-          isLoggingOut = true;
-          try {
-            await secureStorage.clearTokens();
-            await secureStorage.clearUserData();
-            if (onUnauthorized) {
-              onUnauthorized();
-            }
-          } finally {
-            isLoggingOut = false;
-          }
+        const originalRequest = error.config;
+        
+        // If the request was already retried or it's a refresh request, force logout
+        if (originalRequest._retry || originalRequest.url === API_ENDPOINTS.AUTH.REFRESH) {
+          return forceLogout(error, data);
         }
-        error.userMessage = data?.error || ERROR_MESSAGES.UNAUTHORIZED;
-        break;
+
+        if (isRefreshing) {
+          return new Promise(function(resolve, reject) {
+            failedQueue.push({ resolve, reject });
+          }).then(token => {
+            originalRequest.headers.Authorization = 'Bearer ' + token;
+            return api(originalRequest);
+          }).catch(err => {
+            return Promise.reject(err);
+          });
+        }
+
+        originalRequest._retry = true;
+        isRefreshing = true;
+
+        try {
+          const refreshToken = await secureStorage.getRefreshToken();
+          if (!refreshToken) {
+            throw new Error("No refresh token");
+          }
+
+          const response = await publicApi.post(API_ENDPOINTS.AUTH.REFRESH, {}, {
+            headers: { Authorization: `Bearer ${refreshToken}` },
+          });
+
+          const { access_token } = response.data;
+          
+          await secureStorage.setTokens(access_token, refreshToken);
+          
+          processQueue(null, access_token);
+          
+          originalRequest.headers.Authorization = 'Bearer ' + access_token;
+          return api(originalRequest);
+        } catch (refreshError) {
+          processQueue(refreshError, null);
+          return forceLogout(error, data);
+        } finally {
+          isRefreshing = false;
+        }
 
       case 403:
         error.userMessage = data?.error || ERROR_MESSAGES.FORBIDDEN;

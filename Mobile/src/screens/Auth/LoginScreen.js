@@ -11,16 +11,24 @@ import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import useAuth from '../../hooks/useAuth';
 import useBiometric from '../../hooks/useBiometric';
+import secureStorage from '../../utils/secureStorage';
 import { validateEmail, validatePassword } from '../../utils/validators';
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { login, isLoading, error, clearError } = useAuth();
+  const { login, biometricLogin: contextBiometricLogin, isLoading, error, clearError } = useAuth();
   const { isAvailable, isEnabled, biometricType, biometricLogin } = useBiometric();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+  const [hasBiometricToken, setHasBiometricToken] = useState(false);
+
+  React.useEffect(() => {
+    secureStorage.getBiometricToken().then(token => {
+      setHasBiometricToken(!!token);
+    });
+  }, []);
 
   const handleLogin = useCallback(async () => {
     clearError();
@@ -42,11 +50,11 @@ export default function LoginScreen({ navigation }) {
   }, [email, password, login, clearError, navigation]);
 
   const handleBiometricLogin = useCallback(async () => {
-    const credentials = await biometricLogin();
-    if (credentials) {
-      await login(credentials.email, credentials.password);
+    const refreshToken = await biometricLogin();
+    if (refreshToken) {
+      await contextBiometricLogin(refreshToken);
     }
-  }, [biometricLogin, login, navigation]);
+  }, [biometricLogin, contextBiometricLogin]);
 
   const handleEmailChange = useCallback((text) => {
     setEmail(text);
@@ -137,7 +145,7 @@ export default function LoginScreen({ navigation }) {
           />
 
           {/* Biometric Option */}
-          {isAvailable && isEnabled && (
+          {isAvailable && isEnabled && hasBiometricToken && (
             <>
               <View style={styles.dividerRow}>
                 <View style={styles.dividerLine} />
