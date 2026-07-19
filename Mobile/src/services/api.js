@@ -98,8 +98,13 @@ api.interceptors.response.use(
         // Unauthorized — token expired or invalid
         const originalRequest = error.config;
         
-        // If the request was already retried or it's a refresh request, force logout
-        if (originalRequest._retry || originalRequest.url === API_ENDPOINTS.AUTH.REFRESH) {
+        // If it's a login request, refresh request, or already retried, do not attempt to refresh
+        const isLoginRequest = originalRequest.url === API_ENDPOINTS.AUTH.LOGIN || originalRequest.url.endsWith(API_ENDPOINTS.AUTH.LOGIN);
+        if (originalRequest._retry || originalRequest.url === API_ENDPOINTS.AUTH.REFRESH || isLoginRequest) {
+          if (isLoginRequest) {
+            error.userMessage = data?.error || ERROR_MESSAGES.UNAUTHORIZED;
+            return Promise.reject(error);
+          }
           return forceLogout(error, data);
         }
 
@@ -198,7 +203,30 @@ publicApi.interceptors.response.use(
       }
     } else {
       const { status, data } = error.response;
-      error.userMessage = data?.error || (status >= 500 ? ERROR_MESSAGES.SERVER_ERROR : ERROR_MESSAGES.GENERIC);
+      
+      switch (status) {
+        case 400:
+          error.userMessage = data?.error || 'Bad request. Please check your input.';
+          break;
+        case 401:
+          error.userMessage = data?.error || ERROR_MESSAGES.UNAUTHORIZED;
+          break;
+        case 403:
+          error.userMessage = data?.error || ERROR_MESSAGES.FORBIDDEN;
+          break;
+        case 404:
+          error.userMessage = data?.error || ERROR_MESSAGES.NOT_FOUND;
+          break;
+        case 409:
+          error.userMessage = data?.error || 'This resource already exists.';
+          break;
+        case 422:
+          error.userMessage = data?.error || 'Invalid data provided.';
+          break;
+        default:
+          error.userMessage = data?.error || (status >= 500 ? ERROR_MESSAGES.SERVER_ERROR : ERROR_MESSAGES.GENERIC);
+          break;
+      }
     }
     return Promise.reject(error);
   }

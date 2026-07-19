@@ -28,8 +28,10 @@ export default function useBiometric() {
           setBiometricType('Face ID');
         } else if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) {
           setBiometricType('Fingerprint');
+        } else if (types.includes(LocalAuthentication.AuthenticationType.IRIS)) {
+          setBiometricType('Iris scanner');
         } else {
-          setBiometricType('Biometric');
+          setBiometricType('Biometrics');
         }
       }
 
