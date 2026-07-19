@@ -54,11 +54,14 @@ export default function useBiometric() {
     }
   }, []);
 
-  const enableBiometric = useCallback(async (email, password) => {
+  const enableBiometric = useCallback(async () => {
     const success = await authenticate();
     if (success) {
+      const currentRefreshToken = await secureStorage.getRefreshToken();
+      if (currentRefreshToken) {
+        await secureStorage.setBiometricToken(currentRefreshToken);
+      }
       await secureStorage.setBiometricEnabled(true);
-      await secureStorage.setBiometricCredentials(email, password);
       setIsEnabled(true);
       return true;
     }
@@ -67,15 +70,15 @@ export default function useBiometric() {
 
   const disableBiometric = useCallback(async () => {
     await secureStorage.setBiometricEnabled(false);
-    await secureStorage.clearBiometricCredentials();
+    await secureStorage.clearBiometricToken();
     setIsEnabled(false);
   }, []);
 
   const biometricLogin = useCallback(async () => {
     const success = await authenticate();
     if (success) {
-      const credentials = await secureStorage.getBiometricCredentials();
-      return credentials;
+      const biometricToken = await secureStorage.getBiometricToken();
+      return biometricToken;
     }
     return null;
   }, [authenticate]);

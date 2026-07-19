@@ -3,10 +3,11 @@
 // ==============================================================
 
 // API Configuration
-// IMPORTANT: Change this to your machine's LAN IP for development
-// Example: 'http://192.168.1.100:5000'
-// For production, use your deployed backend URL
-export const API_BASE_URL = 'http://10.247.160.52:5000';
+// Uses Expo environment variable for the backend URL.
+// Set EXPO_PUBLIC_API_URL in Mobile/.env
+// Fallback to production Render deployment.
+export const API_BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL || 'https://securemail-km5i.onrender.com';
 
 // API Endpoints (mapped from Flask backend)
 export const API_ENDPOINTS = {
@@ -15,6 +16,8 @@ export const API_ENDPOINTS = {
     REGISTER: '/api/auth/register',
     FORGOT_PASSWORD: '/api/auth/forgot-password',
     RESET_PASSWORD: '/api/auth/reset-password',
+    REFRESH: '/api/auth/refresh',
+    LOGOUT: '/api/auth/logout',
   },
   EMAILS: {
     LIST: '/api/emails',
@@ -40,6 +43,7 @@ export const STORAGE_KEYS = {
   THEME_MODE: 'securemail_theme_mode',
   APP_LOCK_ENABLED: 'securemail_app_lock',
   NOTIFICATION_PREFS: 'securemail_notification_prefs',
+  BIOMETRIC_TOKEN: 'securemail_biometric_token',
 };
 
 // Email Folders
@@ -174,9 +178,9 @@ export const APP_INFO = {
 
 // Request Timeouts (ms)
 export const TIMEOUTS = {
-  DEFAULT: 5000,
+  DEFAULT: 15000,
   UPLOAD: 60000,
-  AUTH: 5000,
+  AUTH: 15000,
 };
 
 // Pagination
