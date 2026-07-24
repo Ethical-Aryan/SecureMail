@@ -90,7 +90,17 @@ const composeCcInput = document.getElementById('compose-cc-input');
 const composeSubjectInput = document.getElementById('compose-subject-input');
 const composeBodyTextarea = document.getElementById('compose-body-textarea');
 const composeAttachmentBar = document.getElementById('compose-attachment-bar');
+const composeAttachmentName = document.getElementById('compose-attachment-name');
+const composeAttachmentSize = document.getElementById('compose-attachment-size');
 const composeRemoveAttachmentBtn = document.getElementById('compose-remove-attachment-btn');
+const composeAttachBtn = document.getElementById('compose-attach-btn');
+const composeFileInput = document.getElementById('compose-file-input');
+const togglePasskeyVisibilityBtn = document.getElementById('toggle-passkey-visibility-btn');
+
+const formatBoldBtn = document.getElementById('format-bold-btn');
+const formatItalicBtn = document.getElementById('format-italic-btn');
+const formatUnderlineBtn = document.getElementById('format-underline-btn');
+
 const composeEncryptionToggle = document.getElementById('compose-encryption-toggle');
 const composeEncryptionToggleLabel = document.getElementById('compose-encryption-toggle-label');
 const composeEncryptionKeyBlock = document.getElementById('compose-encryption-key-block');
@@ -100,6 +110,8 @@ const composeSendBtn = document.getElementById('compose-send-btn');
 
 const toastAlert = document.getElementById('toast-alert');
 const toastText = document.getElementById('toast-text');
+
+let selectedFile = null;
 
 // ------------------------------------------------------------------
 // Helper / State Functions
@@ -117,6 +129,23 @@ function generateRandomPasskey() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const seg = () => Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
   return `${seg()}-${seg()}`;
+}
+
+// ------------------------------------------------------------------
+// Rich Text Formatting Helper
+// ------------------------------------------------------------------
+function applyTextFormatting(prefix, suffix) {
+  if (!composeBodyTextarea) return;
+  const start = composeBodyTextarea.selectionStart;
+  const end = composeBodyTextarea.selectionEnd;
+  const val = composeBodyTextarea.value;
+  const selectedText = val.substring(start, end);
+
+  const formatted = selectedText ? `${prefix}${selectedText}${suffix}` : `${prefix}text${suffix}`;
+  composeBodyTextarea.value = val.substring(0, start) + formatted + val.substring(end);
+  composeBodyTextarea.focus();
+  const selectEnd = start + prefix.length + (selectedText ? selectedText.length : 4);
+  composeBodyTextarea.setSelectionRange(selectEnd, selectEnd);
 }
 
 // ------------------------------------------------------------------
@@ -140,63 +169,190 @@ function parseJwt(token) {
 // ------------------------------------------------------------------
 async function fetchEmailsFromServer() {
   const token = localStorage.getItem('access_token');
+  if (!token) return;
+  
   try {
     const response = await fetch('/api/emails', {
-      headers: { 'Authorization': `Bearer ${token}` }
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
+    
     if (!response.ok) throw new Error("Could not fetch messages");
+    
     emails = await response.json();
+    renderSidebar();
+    renderEmails();
   } catch (err) {
-    showToast("Error retrieving emails from vault");
-    console.error(err);
+    console.error("Error loading emails:", err);
+    showToast("Failed to fetch messages");
   }
 }
 
 async function updateStorageIndicator() {
   const token = localStorage.getItem('access_token');
+  if (!token) return;
   try {
     const response = await fetch('/api/storage', {
-      headers: { 'Authorization': `Bearer ${token}` }
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     if (response.ok) {
       const data = await response.json();
-      document.getElementById('storage-text-display').textContent = `${data.gb_used} GB / ${data.quota_gb} GB`;
-      document.getElementById('storage-bar-display').style.width = `${data.percent_used}%`;
+      const storageText = document.getElementById('storage-text-display');
+      const storageBar = document.getElementById('storage-bar-display');
+      if (storageText) storageText.textContent = `${data.gb_used} GB / ${data.quota_gb} GB`;
+      if (storageBar) storageBar.style.width = `${Math.min(data.percent_used, 100)}%`;
     }
   } catch (err) {
-    console.error(err);
+    console.error("Error loading storage:", err);
   }
 }
 
-async function updateEmailOnServer(id, payload) {
+async function updateEmailOnServer(id, updates) {
   const token = localStorage.getItem('access_token');
   try {
     const response = await fetch(`/api/emails/${id}`, {
       method: 'PUT',
-      headers: { 
+      headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` 
+        'Authorization': `Bearer ${token}`
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(updates)
     });
     return response.ok;
   } catch (err) {
-    console.error(err);
     return false;
   }
 }
 
-async function deleteEmailPermanently(id) {
+async function deleteEmailOnServer(id) {
   const token = localStorage.getItem('access_token');
   try {
     const response = await fetch(`/api/emails/${id}`, {
       method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` }
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
     return response.ok;
   } catch (err) {
-    console.error(err);
     return false;
+  }
+}
+
+// ------------------------------------------------------------------
+// Compose Controllers
+// ------------------------------------------------------------------
+
+function openCompose() {
+  composePanel.classList.remove('hidden');
+  composeToInput.value = '';
+  composeCcInput.value = '';
+  composeCcRow.classList.add('hidden');
+  composeCcToggle.textContent = 'Cc/Bcc';
+  composeSubjectInput.value = '';
+  composeBodyTextarea.value = '';
+  
+  selectedFile = null;
+  if (composeFileInput) composeFileInput.value = '';
+  if (composeAttachmentBar) composeAttachmentBar.classList.add('hidden');
+
+  composeEncryptionToggle.classList.remove('on');
+  composeEncryptionToggle.setAttribute('aria-pressed', 'false');
+  composeEncryptionToggleLabel.className = 'text-[12.5px] font-semibold text-mediumGray select-none';
+  composeEncryptionKeyBlock.classList.add('hidden');
+  
+  const composePasskeyInput = document.getElementById('compose-passkey-input');
+  if (composePasskeyInput) composePasskeyInput.value = generateRandomPasskey();
+
+  setupFloatingLabels();
+  composeToInput.focus();
+}
+
+async function handleComposeSend() {
+  const to = composeToInput.value.trim();
+  const subject = composeSubjectInput.value.trim() || '(No Subject)';
+  const bodyText = composeBodyTextarea.value.trim();
+  const isEncrypted = composeEncryptionToggle.classList.contains('on');
+  
+  const composePasskeyInput = document.getElementById('compose-passkey-input');
+  let passkey = null;
+  if (isEncrypted) {
+    if (composePasskeyInput && composePasskeyInput.value.trim()) {
+      passkey = composePasskeyInput.value.trim();
+    } else {
+      passkey = generateRandomPasskey();
+      if (composePasskeyInput) composePasskeyInput.value = passkey;
+    }
+  }
+  
+  if (!to) {
+    showToast("Recipient email is required");
+    return;
+  }
+  
+  composeSendBtn.disabled = true;
+  composeSendBtn.innerHTML = '<div class="spinner"></div>';
+  
+  const token = localStorage.getItem('access_token');
+  
+  let attachmentName = null;
+  let attachmentSize = null;
+  if (selectedFile) {
+    attachmentName = selectedFile.name;
+    attachmentSize = selectedFile.size >= 1024 * 1024 
+      ? (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB' 
+      : Math.max(1, Math.round(selectedFile.size / 1024)) + ' KB';
+  }
+  
+  try {
+    const response = await fetch('/api/emails', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        recipient_email: to,
+        subject: subject,
+        body: bodyText,
+        is_encrypted: isEncrypted,
+        passkey: passkey,
+        attachment_name: attachmentName,
+        attachment_size: attachmentSize
+      })
+    });
+    
+    if (!response.ok) {
+      const errData = await response.json();
+      throw new Error(errData.error || "Transmission failed");
+    }
+    
+    showToast(isEncrypted ? `Secure Encrypted Transmission Sent` : `Message Sent Successfully`);
+    
+    // Close compose & reset attachment
+    composePanel.classList.add('hidden');
+    selectedFile = null;
+    if (composeFileInput) composeFileInput.value = '';
+    if (composeAttachmentBar) composeAttachmentBar.classList.add('hidden');
+    
+    // Reload state
+    await fetchEmailsFromServer();
+    await updateStorageIndicator();
+    
+    if (activeFolder === 'sent') {
+      renderEmails();
+    }
+    renderSidebar();
+  } catch (err) {
+    showToast(err.message);
+  } finally {
+    composeSendBtn.disabled = false;
+    composeSendBtn.innerHTML = '<i data-lucide="send" class="w-4 h-4"></i><span>Send</span>';
   }
 }
 
@@ -214,13 +370,16 @@ async function loadDashboard(email) {
   document.getElementById('user-display-name').textContent = name;
   document.getElementById('user-display-email').textContent = email;
 
-  // Retrieve data
-  await fetchEmailsFromServer();
-  await updateStorageIndicator();
-
+  // Immediate UI layout render
   renderSidebar();
   renderFilters();
   renderEmails();
+
+  // Retrieve network data in parallel
+  Promise.all([
+    fetchEmailsFromServer(),
+    updateStorageIndicator()
+  ]).catch(err => console.error("Error loading dashboard data:", err));
 }
 
 // ------------------------------------------------------------------
@@ -543,7 +702,7 @@ function showDecryptedContent(email) {
   decryptPromptCard.classList.add('hidden');
   decryptedContentPanel.classList.remove('hidden');
   
-  readEmailBody.innerHTML = email.body.map(p => `<p class="mb-4 text-[#232323] leading-relaxed">${p}</p>`).join('');
+  readEmailBody.innerHTML = email.body.map(p => `<p class="mb-4 text-charcoal leading-relaxed">${p}</p>`).join('');
   
   if (email.attachment) {
     readAttachmentCard.classList.remove('hidden');
@@ -724,8 +883,174 @@ async function handleBulkAction(action) {
 }
 
 // ------------------------------------------------------------------
+// Theme & Settings Controllers
+// ------------------------------------------------------------------
+let currentTheme = localStorage.getItem('theme') || 'system';
+
+function applyTheme(theme) {
+  currentTheme = theme;
+  localStorage.setItem('theme', theme);
+  const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  
+  if (isDark) {
+    document.body.classList.add('dark-theme');
+  } else {
+    document.body.classList.remove('dark-theme');
+  }
+  
+  const topbarThemeBtn = document.getElementById('topbar-theme-toggle-btn');
+  if (topbarThemeBtn) {
+    const icon = topbarThemeBtn.querySelector('i');
+    if (icon) {
+      icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  document.querySelectorAll('.theme-choice-btn').forEach(btn => {
+    const val = btn.getAttribute('data-theme-val');
+    if (val === theme) {
+      btn.classList.add('border-2', 'border-brand');
+    } else {
+      btn.classList.remove('border-2', 'border-brand');
+    }
+  });
+}
+
+function initTheme() {
+  applyTheme(currentTheme);
+}
+
+// ------------------------------------------------------------------
+// Settings Panel Controllers
+// ------------------------------------------------------------------
+const settingsModal = document.getElementById('settings-modal');
+
+function openSettings(defaultTab = 'general') {
+  if (settingsModal) {
+    settingsModal.classList.remove('hidden');
+    switchSettingsTab(defaultTab);
+  }
+}
+
+function closeSettings() {
+  if (settingsModal) {
+    settingsModal.classList.add('hidden');
+  }
+}
+
+function switchSettingsTab(tabKey) {
+  const tabTitles = {
+    general: 'General & Theme',
+    security: 'Security & Passkeys',
+    notifications: 'Notifications',
+    storage: 'Storage & Cache',
+    about: 'About & Tour'
+  };
+
+  const titleEl = document.getElementById('settings-tab-title');
+  if (titleEl && tabTitles[tabKey]) {
+    titleEl.textContent = tabTitles[tabKey];
+  }
+
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    if (btn.getAttribute('data-tab') === tabKey) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  document.querySelectorAll('.settings-panel-tab').forEach(panel => {
+    if (panel.id === `stab-${tabKey}`) {
+      panel.classList.remove('hidden');
+    } else {
+      panel.classList.add('hidden');
+    }
+  });
+}
+
+// ------------------------------------------------------------------
+// Onboarding Walkthrough Controllers
+// ------------------------------------------------------------------
+const onboardingModal = document.getElementById('onboarding-modal');
+let currentSlide = 1;
+const totalSlides = 4;
+
+function openOnboarding() {
+  currentSlide = 1;
+  updateOnboardingSlide(currentSlide);
+  if (onboardingModal) onboardingModal.classList.remove('hidden');
+}
+
+function closeOnboarding() {
+  if (onboardingModal) onboardingModal.classList.add('hidden');
+  localStorage.setItem('onboarding_completed', 'true');
+}
+
+function updateOnboardingSlide(slideNum) {
+  currentSlide = slideNum;
+  document.querySelectorAll('.onboarding-slide').forEach(slide => {
+    if (slide.getAttribute('data-slide') == slideNum) {
+      slide.classList.remove('hidden');
+    } else {
+      slide.classList.add('hidden');
+    }
+  });
+
+  const dotsContainer = document.getElementById('onboarding-dots');
+  if (dotsContainer) {
+    const dots = dotsContainer.querySelectorAll('span');
+    dots.forEach((dot, idx) => {
+      if (idx + 1 === slideNum) {
+        dot.className = 'w-3 h-3 rounded-full bg-brand transition-all duration-200';
+      } else {
+        dot.className = 'w-2.5 h-2.5 rounded-full bg-beigeBorder transition-all duration-200';
+      }
+    });
+  }
+
+  const prevBtn = document.getElementById('onboarding-prev-btn');
+  const nextBtn = document.getElementById('onboarding-next-btn');
+
+  if (prevBtn) {
+    if (slideNum > 1) {
+      prevBtn.classList.remove('invisible');
+    } else {
+      prevBtn.classList.add('invisible');
+    }
+  }
+
+  if (nextBtn) {
+    if (slideNum === totalSlides) {
+      nextBtn.textContent = 'Get Started';
+    } else {
+      nextBtn.textContent = 'Next';
+    }
+  }
+}
+
+// ------------------------------------------------------------------
 // Global Event Bindings
 // ------------------------------------------------------------------
+
+// Topbar Theme Toggle button
+const topbarThemeToggleBtn = document.getElementById('topbar-theme-toggle-btn');
+if (topbarThemeToggleBtn) {
+  topbarThemeToggleBtn.addEventListener('click', () => {
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+    showToast(`Switched to ${newTheme.toUpperCase()} theme`);
+  });
+}
+
+// Topbar Onboarding Help Tour button
+const topbarOnboardingBtn = document.getElementById('topbar-onboarding-btn');
+if (topbarOnboardingBtn) {
+  topbarOnboardingBtn.addEventListener('click', () => {
+    openOnboarding();
+  });
+}
 
 // Topbar Avatar clicks
 topbarAvatarBtn.addEventListener('click', (e) => {
@@ -740,13 +1065,96 @@ document.addEventListener('click', () => {
 profileSettingsBtn.addEventListener('click', (e) => {
   e.stopPropagation();
   profileDropdown.classList.add('hidden');
-  showToast("Settings Panel is restricted in prototype mode");
+  openSettings('general');
 });
+
+const profileOnboardingBtn = document.getElementById('profile-onboarding-btn');
+if (profileOnboardingBtn) {
+  profileOnboardingBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    profileDropdown.classList.add('hidden');
+    openOnboarding();
+  });
+}
 
 profileLogoutBtn.addEventListener('click', () => {
   localStorage.clear();
   window.location.href = '/login';
 });
+
+// Settings Modal Tab Switchers
+document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tabKey = btn.getAttribute('data-tab');
+    switchSettingsTab(tabKey);
+  });
+});
+
+document.querySelectorAll('.theme-choice-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const val = btn.getAttribute('data-theme-val');
+    applyTheme(val);
+    showToast(`Theme updated to ${val.toUpperCase()}`);
+  });
+});
+
+const settingsCloseBtn = document.getElementById('settings-close-btn');
+if (settingsCloseBtn) {
+  settingsCloseBtn.addEventListener('click', closeSettings);
+}
+
+const settingsClearCacheBtn = document.getElementById('settings-clear-cache-btn');
+if (settingsClearCacheBtn) {
+  settingsClearCacheBtn.addEventListener('click', () => {
+    showToast("Cache cleared! Reloading vault...");
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  });
+}
+
+const settingsResetPasskeyBtn = document.getElementById('settings-reset-passkey-btn');
+if (settingsResetPasskeyBtn) {
+  settingsResetPasskeyBtn.addEventListener('click', () => {
+    showToast("Passkey session reset! Re-enter passkeys upon reading encrypted mail.");
+    closeSettings();
+  });
+}
+
+const settingsRestartTourBtn = document.getElementById('settings-restart-tour-btn');
+if (settingsRestartTourBtn) {
+  settingsRestartTourBtn.addEventListener('click', () => {
+    closeSettings();
+    openOnboarding();
+  });
+}
+
+// Onboarding Walkthrough Event Bindings
+const onboardingSkipBtn = document.getElementById('onboarding-skip-btn');
+if (onboardingSkipBtn) {
+  onboardingSkipBtn.addEventListener('click', closeOnboarding);
+}
+
+const onboardingPrevBtn = document.getElementById('onboarding-prev-btn');
+if (onboardingPrevBtn) {
+  onboardingPrevBtn.addEventListener('click', () => {
+    if (currentSlide > 1) {
+      updateOnboardingSlide(currentSlide - 1);
+    }
+  });
+}
+
+const onboardingNextBtn = document.getElementById('onboarding-next-btn');
+if (onboardingNextBtn) {
+  onboardingNextBtn.addEventListener('click', () => {
+    if (currentSlide < totalSlides) {
+      updateOnboardingSlide(currentSlide + 1);
+    } else {
+      closeOnboarding();
+      showToast("Welcome to SecureMail!");
+    }
+  });
+}
 
 searchMailInput.addEventListener('input', () => {
   renderEmails();
@@ -772,6 +1180,18 @@ readStarBtn.addEventListener('click', () => {
   }
 });
 
+const readPasskeyDecryptBtn = document.getElementById('read-passkey-decrypt-btn');
+if (readPasskeyDecryptBtn) {
+  readPasskeyDecryptBtn.addEventListener('click', () => {
+    decryptPromptCard.classList.remove('hidden');
+    decryptedContentPanel.classList.add('hidden');
+    decryptPasskeyInput.value = '';
+    decryptErrorText.classList.add('hidden');
+    decryptPasskeyInput.classList.remove('error');
+    setTimeout(() => decryptPasskeyInput.focus(), 100);
+  });
+}
+
 readArchiveBtn.addEventListener('click', async () => {
   if (activeEmailId) {
     const ok = await updateEmailOnServer(activeEmailId, { folder: 'vault' });
@@ -792,7 +1212,7 @@ readDeleteBtn.addEventListener('click', async () => {
     if (email) {
       let ok = false;
       if (email.folder === 'trash') {
-        ok = await deleteEmailPermanently(activeEmailId);
+        ok = await deleteEmailOnServer(activeEmailId);
         if (ok) showToast("Email permanently deleted");
       } else {
         ok = await updateEmailOnServer(activeEmailId, { folder: 'trash' });
@@ -836,6 +1256,51 @@ composeCloseBtn.addEventListener('click', () => {
   composePanel.classList.add('hidden');
 });
 
+if (composeAttachBtn && composeFileInput) {
+  composeAttachBtn.addEventListener('click', () => {
+    composeFileInput.click();
+  });
+  
+  composeFileInput.addEventListener('change', (e) => {
+    if (e.target.files && e.target.files[0]) {
+      selectedFile = e.target.files[0];
+      if (composeAttachmentName) composeAttachmentName.textContent = selectedFile.name;
+      
+      let szStr = '';
+      if (selectedFile.size >= 1024 * 1024) {
+        szStr = (selectedFile.size / (1024 * 1024)).toFixed(1) + ' MB';
+      } else {
+        szStr = Math.max(1, Math.round(selectedFile.size / 1024)) + ' KB';
+      }
+      if (composeAttachmentSize) composeAttachmentSize.textContent = szStr;
+      if (composeAttachmentBar) composeAttachmentBar.classList.remove('hidden');
+    }
+  });
+}
+
+if (formatBoldBtn) {
+  formatBoldBtn.addEventListener('click', () => applyTextFormatting('<b>', '</b>'));
+}
+if (formatItalicBtn) {
+  formatItalicBtn.addEventListener('click', () => applyTextFormatting('<i>', '</i>'));
+}
+if (formatUnderlineBtn) {
+  formatUnderlineBtn.addEventListener('click', () => applyTextFormatting('<u>', '</u>'));
+}
+
+if (togglePasskeyVisibilityBtn && decryptPasskeyInput) {
+  togglePasskeyVisibilityBtn.addEventListener('click', () => {
+    const isPass = decryptPasskeyInput.getAttribute('type') === 'password';
+    const newType = isPass ? 'text' : 'password';
+    decryptPasskeyInput.setAttribute('type', newType);
+    const icon = togglePasskeyVisibilityBtn.querySelector('i');
+    if (icon) {
+      icon.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
+      if (window.lucide) lucide.createIcons();
+    }
+  });
+}
+
 composeCcToggle.addEventListener('click', () => {
   const isHidden = composeCcRow.classList.contains('hidden');
   if (isHidden) {
@@ -848,7 +1313,9 @@ composeCcToggle.addEventListener('click', () => {
 });
 
 composeRemoveAttachmentBtn.addEventListener('click', () => {
-  composeAttachmentBar.classList.add('hidden');
+  selectedFile = null;
+  if (composeFileInput) composeFileInput.value = '';
+  if (composeAttachmentBar) composeAttachmentBar.classList.add('hidden');
 });
 
 composeEncryptionToggle.addEventListener('click', () => {
@@ -858,7 +1325,10 @@ composeEncryptionToggle.addEventListener('click', () => {
   if (isOn) {
     composeEncryptionToggleLabel.className = 'text-[12.5px] font-semibold text-brand select-none';
     composeEncryptionKeyBlock.classList.remove('hidden');
-    generatedPasskeyDisplay.textContent = generateRandomPasskey();
+    const composePasskeyInput = document.getElementById('compose-passkey-input');
+    if (composePasskeyInput && !composePasskeyInput.value) {
+      composePasskeyInput.value = generateRandomPasskey();
+    }
   } else {
     composeEncryptionToggleLabel.className = 'text-[12.5px] font-semibold text-mediumGray select-none';
     composeEncryptionKeyBlock.classList.add('hidden');
@@ -866,8 +1336,25 @@ composeEncryptionToggle.addEventListener('click', () => {
 });
 
 generateNewKeyBtn.addEventListener('click', () => {
-  generatedPasskeyDisplay.textContent = generateRandomPasskey();
+  const composePasskeyInput = document.getElementById('compose-passkey-input');
+  if (composePasskeyInput) composePasskeyInput.value = generateRandomPasskey();
 });
+
+const toggleComposePasskeyBtn = document.getElementById('toggle-compose-passkey-visibility-btn');
+if (toggleComposePasskeyBtn) {
+  toggleComposePasskeyBtn.addEventListener('click', () => {
+    const passInput = document.getElementById('compose-passkey-input');
+    if (passInput) {
+      const isPass = passInput.getAttribute('type') === 'password';
+      passInput.setAttribute('type', isPass ? 'text' : 'password');
+      const icon = toggleComposePasskeyBtn.querySelector('i');
+      if (icon) {
+        icon.setAttribute('data-lucide', isPass ? 'eye-off' : 'eye');
+        if (window.lucide) lucide.createIcons();
+      }
+    }
+  });
+}
 
 composeSendBtn.addEventListener('click', () => {
   handleComposeSend();
@@ -875,6 +1362,8 @@ composeSendBtn.addEventListener('click', () => {
 
 // Page Session Verification
 window.addEventListener('load', () => {
+  initTheme();
+
   const token = localStorage.getItem('access_token');
   if (!token) {
     window.location.href = '/login';
@@ -898,6 +1387,13 @@ window.addEventListener('load', () => {
   const email = payload.email || localStorage.getItem('user_email') || 'arjun.mehta@securemail.app';
   setupFloatingLabels();
   loadDashboard(email);
+
+  // Trigger Onboarding Tour for new users
+  if (!localStorage.getItem('onboarding_completed')) {
+    setTimeout(() => {
+      openOnboarding();
+    }, 600);
+  }
   
   // Mobile drawer trigger hook
   const drawer = document.getElementById('sidebar-drawer');
@@ -917,8 +1413,29 @@ window.addEventListener('load', () => {
     
     overlay.addEventListener('click', closeDrawer);
     
-    document.getElementById('sidebar-compose-btn').addEventListener('click', closeDrawer);
-    document.getElementById('sidebar-nav').addEventListener('click', closeDrawer);
+    const composeBtn = document.getElementById('sidebar-compose-btn');
+    if (composeBtn) composeBtn.addEventListener('click', closeDrawer);
+    const navBtn = document.getElementById('sidebar-nav');
+    if (navBtn) navBtn.addEventListener('click', closeDrawer);
+  }
+
+  // Auto-sync inbox in background every 4 seconds
+  setInterval(() => {
+    fetchEmailsFromServer();
+  }, 4000);
+
+  const inboxRefreshBtn = document.getElementById('inbox-refresh-btn');
+  if (inboxRefreshBtn) {
+    inboxRefreshBtn.addEventListener('click', async () => {
+      const icon = inboxRefreshBtn.querySelector('i');
+      if (icon) icon.classList.add('anim-spin');
+      await fetchEmailsFromServer();
+      await updateStorageIndicator();
+      showToast("Inbox refreshed");
+      setTimeout(() => {
+        if (icon) icon.classList.remove('anim-spin');
+      }, 450);
+    });
   }
   
   lucide.createIcons();

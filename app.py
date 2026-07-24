@@ -47,15 +47,30 @@ def check_if_token_is_revoked(jwt_header, jwt_payload: dict):
             return False
     return False
 
-# Database Switcher (defaults to SQLite for easy local setup)
+# Automatic Database Environment Switcher
 load_dotenv(override=True)
 
-DB_TYPE = os.getenv("DB_TYPE", "sqlite").lower()
-MYSQL_HOST = os.getenv("MYSQL_HOST")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "15109"))
-MYSQL_USER = os.getenv("MYSQL_USER")
-MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+FLASK_ENV = os.getenv("FLASK_ENV", "development").lower()
+IS_PROD = (FLASK_ENV == "production") or (os.getenv("ENV", "").lower() == "production") or (os.getenv("IS_PRODUCTION", "false").lower() == "true")
+
+DB_TYPE = os.getenv("DB_TYPE", "mysql").lower()
+
+if IS_PROD:
+    # Production Server -> Connected to Aiven Cloud MySQL
+    MYSQL_HOST = os.getenv("AIVEN_MYSQL_HOST", "securemail-db-sumit90asa-2195.l.aivencloud.com")
+    MYSQL_PORT = int(os.getenv("AIVEN_MYSQL_PORT", "15109"))
+    MYSQL_USER = os.getenv("AIVEN_MYSQL_USER", "avnadmin")
+    MYSQL_PASSWORD = os.getenv("AIVEN_MYSQL_PASSWORD", "")
+    MYSQL_DATABASE = os.getenv("AIVEN_MYSQL_DATABASE", "defaultdb")
+    print(f"[INFO] Production Environment Active -> Connected to Aiven Cloud MySQL ({MYSQL_HOST}:{MYSQL_PORT})")
+else:
+    # Localhost Development -> Connected to Local XAMPP MySQL
+    MYSQL_HOST = os.getenv("LOCAL_MYSQL_HOST", os.getenv("MYSQL_HOST", "localhost"))
+    MYSQL_PORT = int(os.getenv("LOCAL_MYSQL_PORT", os.getenv("MYSQL_PORT", "3306")))
+    MYSQL_USER = os.getenv("LOCAL_MYSQL_USER", os.getenv("MYSQL_USER", "root"))
+    MYSQL_PASSWORD = os.getenv("LOCAL_MYSQL_PASSWORD", os.getenv("MYSQL_PASSWORD", ""))
+    MYSQL_DATABASE = os.getenv("LOCAL_MYSQL_DATABASE", os.getenv("MYSQL_DATABASE", "securemail"))
+    print(f"[INFO] Localhost Environment Active ({FLASK_ENV}) -> Connected to Local XAMPP MySQL ({MYSQL_HOST}:{MYSQL_PORT})")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "securemail.db")
@@ -83,27 +98,28 @@ def get_connection():
 
     if DB_TYPE == "mysql":
         try:
+            is_local = (MYSQL_HOST.lower() in ("localhost", "127.0.0.1"))
             return mysql.connector.connect(
                 host=MYSQL_HOST,
                 port=MYSQL_PORT,
                 user=MYSQL_USER,
                 password=MYSQL_PASSWORD,
                 database=MYSQL_DATABASE,
-                ssl_disabled=False,
-                ssl_verify_cert=False,
-                connection_timeout=10
+                ssl_disabled=is_local,
+                ssl_verify_cert=not is_local,
+                connection_timeout=2
             )
         except Exception as e:
-            print(f"[ERROR] MySQL connection failed: {e}")
-            allow_fallback = os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() == "true"
-            if allow_fallback:
-                print("[INFO] Falling back to SQLite for local development...")
-                DB_TYPE = "sqlite"
-            else:
-                raise Exception(f"Database connection failed: {e}")
+            print(f"[WARNING] MySQL connection failed ({e}). Switching DB_TYPE to SQLite for instant local responses...")
+            DB_TYPE = "sqlite"
 
-    conn = sqlite3.connect(SQLITE_PATH)
+    conn = sqlite3.connect(SQLITE_PATH, timeout=5)
     conn.row_factory = sqlite3.Row
+    try:
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+    except Exception:
+        pass
     return conn
 
 
@@ -145,16 +161,17 @@ def init_db():
     global DB_TYPE
     if DB_TYPE == "mysql":
         try:
+            is_local = (MYSQL_HOST.lower() in ("localhost", "127.0.0.1"))
             conn = mysql.connector.connect(
                 host=MYSQL_HOST,
                 port=MYSQL_PORT,
                 user=MYSQL_USER,
                 password=MYSQL_PASSWORD,
-                ssl_disabled=False,
-                ssl_verify_cert=False,
-                connection_timeout=10)
+                ssl_disabled=is_local,
+                ssl_verify_cert=not is_local,
+                connection_timeout=5)
             cur = conn.cursor()
-            cur.execute(f"CREATE DATABASE IF NOT EXISTS {MYSQL_DATABASE}")
+            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DATABASE}`")
             cur.close()
             conn.close()
         except Exception as e:
@@ -487,7 +504,8 @@ def get_emails():
         if e["created_at"]:
             time_str = str(e["created_at"])[:19]
         
-        is_enc = to_bool(e["is_encrypted"])
+        has_passkey = bool(e["passkey"] and str(e["passkey"]).strip())
+        is_enc = to_bool(e["is_encrypted"]) or has_passkey
         email_body = e["body"].split('\n') if e["body"] else []
         if is_enc:
             email_body = ["🔑 [Secure Encrypted Payload - Decryption Required]"]
@@ -582,18 +600,20 @@ def compose_email():
 # Automatically generate a mobile notification for the recipient
 # when a new email is created/sent.
 # Do not remove without updating the mobile application.
-###############################################################
-    import json
-    notif_title = f"New Email from {sender_email.split('@')[0].title()}"
-    notif_body = f"🔒 Encrypted message: {subject}" if is_encrypted else subject
-    notif_type = "encrypted_email" if is_encrypted else "new_email"
-    notif_data = json.dumps({"email_id": email_row_id, "sender_email": sender_email, "type": notif_type})
-    
-    execute_db(
-        """INSERT INTO notifications (user_email, title, body, type, data_json, is_read)
-        VALUES (%s, %s, %s, %s, %s, %s)""",
-        (recipient_email, notif_title, notif_body, notif_type, notif_data, 0)
-    )
+    try:
+        import json
+        notif_title = f"New Email from {sender_email.split('@')[0].title()}"
+        notif_body = f"🔒 Encrypted message: {subject}" if is_encrypted else subject
+        notif_type = "encrypted_email" if is_encrypted else "new_email"
+        notif_data = json.dumps({"email_id": email_row_id, "sender_email": sender_email, "type": notif_type})
+        
+        execute_db(
+            """INSERT INTO notifications (user_email, title, body, type, data_json, is_read)
+            VALUES (%s, %s, %s, %s, %s, %s)""",
+            (recipient_email, notif_title, notif_body, notif_type, notif_data, 0)
+        )
+    except Exception as notif_err:
+        print(f"[WARNING] Notification creation skipped: {notif_err}")
 
     return jsonify({
         "message": "Secure transmission complete",

@@ -506,3 +506,211 @@ h1, h2, h3, h4, .brand-font {
 .btn-grow:hover {
   transform: scale(1.02);
 }
+
+/* ==================== DARK THEME SYSTEM ==================== */
+body.dark-theme, body.dark-theme #app-dashboard {
+  background-color: #0F1015 !important;
+  color: #E2E4EE !important;
+}
+
+body.dark-theme aside#sidebar-drawer {
+  background-color: #171821 !important;
+  border-color: #272938 !important;
+}
+
+body.dark-theme header {
+  background-color: #171821 !important;
+  border-color: #272938 !important;
+}
+
+body.dark-theme header input#search-mail-input {
+  background-color: #202230 !important;
+  color: #F1F2F8 !important;
+  border-color: #2F3246 !important;
+}
+
+body.dark-theme .card, 
+body.dark-theme #inbox-screen .card, 
+body.dark-theme #read-attachment-card,
+body.dark-theme #compose-panel,
+body.dark-theme #settings-modal-card,
+body.dark-theme #onboarding-modal-card {
+  background-color: #1A1C28 !important;
+  border-color: #2B2E42 !important;
+  color: #E2E4EE !important;
+}
+
+body.dark-theme .text-charcoal {
+  color: #F1F2F8 !important;
+}
+
+body.dark-theme .text-mediumGray {
+  color: #9E9EB2 !important;
+}
+
+body.dark-theme .border-beigeBorder,
+body.dark-theme .border-t,
+body.dark-theme .border-b,
+body.dark-theme .border-r,
+body.dark-theme .border-l {
+  border-color: #272938 !important;
+}
+
+body.dark-theme .bg-[#F7F2EA],
+body.dark-theme .bg-[#EFE4D3] {
+  background-color: #12131A !important;
+}
+
+body.dark-theme .bg-[#F7F2EA] {
+  background-color: #171821 !important;
+}
+
+body.dark-theme .bg-white {
+  background-color: #1A1C28 !important;
+}
+
+body.dark-theme .hover\:bg-[#F7F2EA]:hover,
+body.dark-theme .hover\:bg-[#EFE4D3]:hover,
+body.dark-theme .hover\:bg-beigeLight:hover {
+  background-color: #252838 !important;
+}
+
+body.dark-theme #inbox-email-list .email-row:hover {
+  background-color: #242738 !important;
+}
+
+body.dark-theme #inbox-email-list .email-row.selected {
+  background-color: #2B2745 !important;
+}
+
+body.dark-theme textarea#compose-body-textarea,
+body.dark-theme input#compose-to-input,
+body.dark-theme input#compose-cc-input,
+body.dark-theme input#compose-subject-input {
+  color: #F1F2F8 !important;
+}
+
+body.dark-theme #profile-dropdown {
+  background-color: #1C1E2C !important;
+  border-color: #2E3146 !important;
+}
+
+body.dark-theme #decrypt-passkey-input {
+  background-color: #222536 !important;
+  color: #FFFFFF !important;
+  border-color: #373A52 !important;
+}
+
+body.dark-theme #decrypt-prompt-card {
+  background-color: #181924 !important;
+}
+
+body.dark-theme #read-email-body {
+  color: #E2E4EE !important;
+}
+
+body.dark-theme .badge-secondary {
+  background-color: #272A3C !important;
+  color: #B5B7CA !important;
+}
+
+body.dark-theme .btn-secondary {
+  background-color: #222536 !important;
+  color: #E2E4EE !important;
+  border-color: #353850 !important;
+}
+
+body.dark-theme .btn-secondary:hover {
+  background-color: #2C2F45 !important;
+}
+
+body.dark-theme .settings-tab-btn.active {
+  background-color: #6B4EFF !important;
+  color: #FFFFFF !important;
+}
+
+/* Landing Page Index Dark Theme Overrides */
+body.dark-theme section#features {
+  background-color: #12131A !important;
+  border-color: #272938 !important;
+}
+
+body.dark-theme .feature-card {
+  background-color: #1A1C28 !important;
+  border-color: #2B2E42 !important;
+}
+
+body.dark-theme .feature-card:hover {
+  background-color: #222536 !important;
+  border-color: #6B4EFF !important;
+}
+
+body.dark-theme footer {
+  background-color: #171821 !important;
+  border-color: #272938 !important;
+}
+
+body.dark-theme .mockup-float {
+  background-color: #1A1C28 !important;
+  border-color: #2B2E42 !important;
+}
+
+/* Auth Pages (Login / Register) Dark Theme Overrides */
+body.dark-theme, 
+body.dark-theme .bg-\[\#F7F2EA\] {
+  background-color: #0F1015 !important;
+}
+
+body.dark-theme .hide-on-narrow {
+  background: linear-gradient(135deg, #171824 0%, #101118 100%) !important;
+  border-right: 1px solid #272938 !important;
+}
+
+body.dark-theme .hide-on-narrow div[class*="bg-[rgba(255,255,255"] {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: #272938 !important;
+}
+
+body.dark-theme #login-card,
+body.dark-theme #register-card {
+  color: #F1F2F8 !important;
+}
+
+body.dark-theme .field-input {
+  background-color: #1E202D !important;
+  color: #FFFFFF !important;
+  border-color: #2F3248 !important;
+}
+
+body.dark-theme .field-input:focus {
+  border-color: #8A6CFF !important;
+  box-shadow: 0 0 0 4px rgba(138, 108, 255, 0.18) !important;
+}
+
+body.dark-theme .field-label {
+  color: #9E9EB2 !important;
+  background-color: transparent !important;
+}
+
+body.dark-theme .field-label.floated,
+body.dark-theme .field-input:focus ~ .field-label,
+body.dark-theme .field-input:not(:placeholder-shown) ~ .field-label {
+  color: #8A6CFF !important;
+}
+
+body.dark-theme #login-error-alert,
+body.dark-theme #register-error-alert {
+  background-color: #2D1A1C !important;
+  border-color: #4A2427 !important;
+  color: #FF6B6B !important;
+}
+
+body.dark-theme #register-success-alert {
+  background-color: #1A2D23 !important;
+  border-color: #244A37 !important;
+  color: #4EFEAF !important;
+}
+
+body.dark-theme #password-strength-box div[id^="segment-"] {
+  border-color: #272938 !important;
+}

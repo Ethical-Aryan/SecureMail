@@ -41,7 +41,11 @@
         <span class="text-[17px] font-bold tracking-tight text-charcoal">SecureMail</span>
       </a>
       
-      <div class="flex items-center gap-4 pointer-events-auto">
+      <div class="flex items-center gap-3 pointer-events-auto">
+        <button id="auth-theme-toggle-btn" class="icon-btn w-9 h-9 flex items-center justify-center rounded-xl hover:bg-beigeMedium transition" title="Toggle Theme (Light / Dark)">
+          <i data-lucide="moon" class="w-[18px] h-[18px] text-mediumGray"></i>
+        </button>
+
         <span class="hidden sm:inline text-[13.5px] font-semibold text-mediumGray">Need an account?</span>
         <a href="/register" class="btn btn-secondary btn-grow" style="padding: 8px 16px; border-radius: 12px; font-size: 13px; font-weight: 700;">
           <span>Sign Up</span>
@@ -164,5 +168,31 @@
   </div>
 
   <script src="/static/js/login.js"></script>
+  <script>
+    function applyTheme(theme) {
+      localStorage.setItem('theme', theme);
+      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.body.classList.add('dark-theme');
+      } else {
+        document.body.classList.remove('dark-theme');
+      }
+      const btn = document.getElementById('auth-theme-toggle-btn');
+      if (btn) {
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    }
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    applyTheme(savedTheme);
+    document.getElementById('auth-theme-toggle-btn')?.addEventListener('click', () => {
+      const currentTheme = localStorage.getItem('theme') || 'system';
+      const isDark = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      applyTheme(isDark ? 'light' : 'dark');
+    });
+  </script>
 </body>
 </html>

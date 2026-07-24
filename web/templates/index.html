@@ -64,7 +64,12 @@
     </nav>
 
     <!-- Nav buttons -->
-    <div class="flex items-center gap-4">
+    <div class="flex items-center gap-3">
+      <!-- Theme Toggle Button -->
+      <button id="index-theme-toggle-btn" class="icon-btn w-9 h-9 flex items-center justify-center rounded-xl hover:bg-beigeMedium transition" title="Toggle Theme (Light / Dark)">
+        <i data-lucide="moon" class="w-[18px] h-[18px] text-mediumGray"></i>
+      </button>
+
       <a href="/login"
         class="text-[14.5px] font-bold text-mediumGray hover:text-brand transition duration-150 px-3 py-2">Sign In</a>
       <a href="/register" class="btn btn-primary btn-grow"
@@ -253,8 +258,34 @@
   </footer>
 
   <script>
-    lucide.createIcons();
+    function applyTheme(theme) {
+      localStorage.setItem('theme', theme);
+      const isDark = theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      if (isDark) {
+        document.body.classList.add('dark-theme');
+      } else {
+        document.body.classList.remove('dark-theme');
+      }
+      const btn = document.getElementById('index-theme-toggle-btn');
+      if (btn) {
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+          if (window.lucide) lucide.createIcons();
+        }
+      }
+    }
+
+    const savedTheme = localStorage.getItem('theme') || 'system';
+    applyTheme(savedTheme);
+
+    document.getElementById('index-theme-toggle-btn')?.addEventListener('click', () => {
+      const currentTheme = localStorage.getItem('theme') || 'system';
+      const isDark = currentTheme === 'dark' || (currentTheme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      applyTheme(isDark ? 'light' : 'dark');
+    });
+
+    if (window.lucide) lucide.createIcons();
   </script>
 </body>
-
 </html>
