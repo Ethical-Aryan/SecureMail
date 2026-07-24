@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   View, Text, ScrollView, Switch, TouchableOpacity,
   KeyboardAvoidingView, StyleSheet, Platform, Alert, Modal, ActivityIndicator,
@@ -28,54 +28,39 @@ export default function ComposeScreen({ navigation }) {
 
   const [recipient, setRecipient] = useState('');
   const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [plainBody, setPlainBody] = useState('');
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [passkey, setPasskey] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
 
-  // Formatting state
-  const [selection, setSelection] = useState({ start: 0, end: 0 });
-  const [isUploading, setIsUploading] = useState(false);
-  const [attachments, setAttachments] = useState([]);
+  // Active Formatting Toggles
+  const [isBold, setIsBold] = useState(false);
+  const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
 
-  // Link Modal State
+  // Link Items
+  const [links, setLinks] = useState([]);
   const [linkModalVisible, setLinkModalVisible] = useState(false);
   const [linkUrl, setLinkUrl] = useState('');
   const [linkText, setLinkText] = useState('');
 
+  // Attachments
+  const [isUploading, setIsUploading] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+
   // ------------------------------------------------------------------
-  // Formatting Helper Handlers
+  // Formatting Handlers
   // ------------------------------------------------------------------
 
-  const applyFormatting = useCallback((tagOpen, tagClose) => {
-    const start = Math.min(selection.start, selection.end);
-    const end = Math.max(selection.start, selection.end);
-
-    if (start !== end) {
-      const selectedText = body.substring(start, end);
-      const newText = body.substring(0, start) + `${tagOpen}${selectedText}${tagClose}` + body.substring(end);
-      setBody(newText);
-    } else {
-      const newText = body.substring(0, start) + `${tagOpen}${tagClose}` + body.substring(start);
-      setBody(newText);
-    }
-  }, [body, selection]);
-
-  const handleBold = useCallback(() => applyFormatting('<b>', '</b>'), [applyFormatting]);
-  const handleItalic = useCallback(() => applyFormatting('<i>', '</i>'), [applyFormatting]);
-  const handleUnderline = useCallback(() => applyFormatting('<u>', '</u>'), [applyFormatting]);
+  const toggleBold = useCallback(() => setIsBold((prev) => !prev), []);
+  const toggleItalic = useCallback(() => setIsItalic((prev) => !prev), []);
+  const toggleUnderline = useCallback(() => setIsUnderline((prev) => !prev), []);
 
   const handleOpenLinkModal = useCallback(() => {
-    const start = Math.min(selection.start, selection.end);
-    const end = Math.max(selection.start, selection.end);
-    if (start !== end) {
-      setLinkText(body.substring(start, end));
-    } else {
-      setLinkText('');
-    }
+    setLinkText('');
     setLinkUrl('');
     setLinkModalVisible(true);
-  }, [body, selection]);
+  }, []);
 
   const handleInsertLink = useCallback(() => {
     let cleanUrl = linkUrl.trim();
@@ -94,15 +79,35 @@ export default function ComposeScreen({ navigation }) {
     }
 
     const label = linkText.trim() || cleanUrl;
-    const linkHtml = `<a href="${cleanUrl}">${label}</a>`;
-
-    const start = Math.min(selection.start, selection.end);
-    const end = Math.max(selection.start, selection.end);
-
-    const newText = body.substring(0, start) + linkHtml + body.substring(end);
-    setBody(newText);
+    setLinks((prev) => [...prev, { label, url: cleanUrl }]);
     setLinkModalVisible(false);
-  }, [linkUrl, linkText, body, selection, showToast]);
+    showToast('Hyperlink attached', 'success');
+  }, [linkUrl, linkText, showToast]);
+
+  const handleRemoveLink = useCallback((index) => {
+    setLinks((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
+  // ------------------------------------------------------------------
+  // Build Final HTML Payload for Backend Transmission
+  // ------------------------------------------------------------------
+
+  const formattedHtmlBody = useMemo(() => {
+    if (!plainBody) return '';
+
+    let content = plainBody;
+
+    if (isBold) content = `<b>${content}</b>`;
+    if (isItalic) content = `<i>${content}</i>`;
+    if (isUnderline) content = `<u>${content}</u>`;
+
+    if (links.length > 0) {
+      const linkHtmls = links.map((l) => `<p><a href="${l.url}">${l.label}</a></p>`).join('');
+      content = `${content}\n<br/>${linkHtmls}`;
+    }
+
+    return content;
+  }, [plainBody, isBold, isItalic, isUnderline, links]);
 
   // ------------------------------------------------------------------
   // Document Attachment Handler
@@ -122,8 +127,7 @@ export default function ComposeScreen({ navigation }) {
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const asset = result.assets[0];
-        
-        // 10MB limit validation
+
         if (asset.size && asset.size > 10 * 1024 * 1024) {
           showToast('Attachment exceeds maximum size of 10MB', 'error');
           return;
@@ -144,7 +148,6 @@ export default function ComposeScreen({ navigation }) {
           ]);
           showToast('Attachment uploaded successfully', 'success');
         } catch {
-          // Local fallback metadata attachment if backend endpoint is unavailable
           setAttachments((prev) => [
             ...prev,
             {
@@ -174,7 +177,7 @@ export default function ComposeScreen({ navigation }) {
   // ------------------------------------------------------------------
 
   const handleSend = useCallback(async () => {
-    const { valid, errors } = validateComposeForm({ recipient, subject, body });
+    const { valid, errors } = validateComposeForm({ recipient, subject, body: plainBody });
 
     if (isEncrypted) {
       const passkeyResult = validatePasskey(passkey);
@@ -195,7 +198,7 @@ export default function ComposeScreen({ navigation }) {
     const result = await sendEmail({
       recipientEmail: recipient,
       subject,
-      body,
+      body: formattedHtmlBody,
       isEncrypted,
       passkey: isEncrypted ? passkey : '',
       attachmentName: firstAttachment ? firstAttachment.name : null,
@@ -208,10 +211,10 @@ export default function ComposeScreen({ navigation }) {
     } else {
       showToast(result.error || 'Failed to send email', 'error');
     }
-  }, [recipient, subject, body, isEncrypted, passkey, attachments, sendEmail, showToast, navigation]);
+  }, [recipient, subject, plainBody, formattedHtmlBody, isEncrypted, passkey, attachments, sendEmail, showToast, navigation]);
 
   const handleDiscard = useCallback(() => {
-    if (recipient || subject || body || attachments.length > 0) {
+    if (recipient || subject || plainBody || attachments.length > 0) {
       Alert.alert(
         'Discard Draft?',
         'Are you sure you want to discard this email?',
@@ -223,7 +226,7 @@ export default function ComposeScreen({ navigation }) {
     } else {
       navigation.goBack();
     }
-  }, [recipient, subject, body, attachments, navigation]);
+  }, [recipient, subject, plainBody, attachments, navigation]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
@@ -344,16 +347,34 @@ export default function ComposeScreen({ navigation }) {
 
           {/* Formatting Toolbar */}
           <View style={[styles.toolbar, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <TouchableOpacity onPress={handleBold} style={styles.toolBtn}>
-              <Feather name="bold" size={18} color={colors.textPrimary} />
+            <TouchableOpacity
+              onPress={toggleBold}
+              style={[
+                styles.toolBtn,
+                isBold && { backgroundColor: colors.primary + '20', borderRadius: BORDER_RADIUS.xs },
+              ]}
+            >
+              <Feather name="bold" size={18} color={isBold ? colors.primary : colors.textPrimary} />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleItalic} style={styles.toolBtn}>
-              <Feather name="italic" size={18} color={colors.textPrimary} />
+            <TouchableOpacity
+              onPress={toggleItalic}
+              style={[
+                styles.toolBtn,
+                isItalic && { backgroundColor: colors.primary + '20', borderRadius: BORDER_RADIUS.xs },
+              ]}
+            >
+              <Feather name="italic" size={18} color={isItalic ? colors.primary : colors.textPrimary} />
             </TouchableOpacity>
 
-            <TouchableOpacity onPress={handleUnderline} style={styles.toolBtn}>
-              <Feather name="underline" size={18} color={colors.textPrimary} />
+            <TouchableOpacity
+              onPress={toggleUnderline}
+              style={[
+                styles.toolBtn,
+                isUnderline && { backgroundColor: colors.primary + '20', borderRadius: BORDER_RADIUS.xs },
+              ]}
+            >
+              <Feather name="underline" size={18} color={isUnderline ? colors.primary : colors.textPrimary} />
             </TouchableOpacity>
 
             <TouchableOpacity onPress={handleOpenLinkModal} style={styles.toolBtn}>
@@ -368,6 +389,23 @@ export default function ComposeScreen({ navigation }) {
               )}
             </TouchableOpacity>
           </View>
+
+          {/* Embedded Hyperlinks Chips */}
+          {links.length > 0 && (
+            <View style={styles.attachmentContainer}>
+              {links.map((link, idx) => (
+                <View key={idx} style={[styles.attachmentChip, { backgroundColor: colors.surface, borderColor: colors.primary }]}>
+                  <Feather name="link" size={12} color={colors.primary} style={styles.chipIcon} />
+                  <Text style={[styles.chipText, { color: colors.primary }]} numberOfLines={1}>
+                    {link.label}
+                  </Text>
+                  <TouchableOpacity onPress={() => handleRemoveLink(idx)} style={styles.chipRemoveBtn}>
+                    <Feather name="x" size={12} color={colors.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Attachment Chips Display */}
           {attachments.length > 0 && (
@@ -386,23 +424,64 @@ export default function ComposeScreen({ navigation }) {
             </View>
           )}
 
-          {/* Message Body Input */}
+          {/* Clean Multiline Input (No raw HTML tags displayed) */}
           <View style={styles.bodyInputContainer}>
             <Input
-              value={body}
+              value={plainBody}
               onChangeText={(text) => {
-                setBody(text);
+                setPlainBody(text);
                 if (fieldErrors.body) setFieldErrors((p) => ({ ...p, body: null }));
               }}
-              onSelectionChange={(e) => setSelection(e.nativeEvent.selection)}
-              placeholder="Write your encrypted email here..."
+              placeholder="Write your email here..."
               multiline
-              numberOfLines={8}
+              numberOfLines={6}
               error={fieldErrors.body}
-              inputStyle={[styles.bodyInputText, { color: colors.textPrimary }]}
+              inputStyle={[
+                styles.bodyInputText,
+                {
+                  color: colors.textPrimary,
+                  fontWeight: isBold ? '700' : '400',
+                  fontStyle: isItalic ? 'italic' : 'normal',
+                  textDecorationLine: isUnderline ? 'underline' : 'none',
+                },
+              ]}
               style={styles.bodyInputWrapper}
             />
           </View>
+
+          {/* Real-time Formatted Text Live Preview Card */}
+          {plainBody.length > 0 && (isBold || isItalic || isUnderline || links.length > 0) && (
+            <View style={[styles.previewCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={styles.previewHeader}>
+                <Feather name="eye" size={14} color={colors.primary} style={{ marginRight: 6 }} />
+                <Text style={[styles.previewTitle, { color: colors.textSecondary }]}>Formatted Live Preview</Text>
+              </View>
+
+              <Text
+                style={[
+                  styles.previewText,
+                  {
+                    color: colors.textPrimary,
+                    fontWeight: isBold ? '700' : '400',
+                    fontStyle: isItalic ? 'italic' : 'normal',
+                    textDecorationLine: isUnderline ? 'underline' : 'none',
+                  },
+                ]}
+              >
+                {plainBody}
+              </Text>
+
+              {links.length > 0 && (
+                <View style={{ marginTop: SPACING.xs }}>
+                  {links.map((l, i) => (
+                    <Text key={i} style={[styles.linkPreviewText, { color: colors.primary }]}>
+                      🔗 {l.label} ({l.url})
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
 
@@ -544,8 +623,8 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   bodyInputContainer: {
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.xxxl,
+    marginTop: SPACING.xs,
+    marginBottom: SPACING.md,
   },
   bodyInputWrapper: {
     borderBottomWidth: 0,
@@ -554,6 +633,33 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     fontSize: 16,
     lineHeight: 24,
+  },
+  previewCard: {
+    borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
+    padding: SPACING.md,
+    marginBottom: SPACING.xl,
+  },
+  previewHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SPACING.xs,
+  },
+  previewTitle: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  previewText: {
+    ...TYPOGRAPHY.body,
+    fontSize: 15,
+    lineHeight: 22,
+  },
+  linkPreviewText: {
+    ...TYPOGRAPHY.caption,
+    textDecorationLine: 'underline',
+    marginTop: 2,
   },
   encryptionCard: {
     borderRadius: BORDER_RADIUS.lg,
