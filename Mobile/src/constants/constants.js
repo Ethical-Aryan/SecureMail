@@ -29,6 +29,14 @@ export const API_ENDPOINTS = {
   STORAGE: {
     INFO: '/api/storage',
   },
+  MOBILE: {
+    REGISTER_PUSH_TOKEN: '/api/mobile/register-push-token',
+    REMOVE_PUSH_TOKEN: '/api/mobile/remove-push-token',
+    NOTIFICATIONS: '/api/mobile/notifications',
+    MARK_READ: '/api/mobile/notifications/read',
+    DELETE_NOTIFICATION: (id) => `/api/mobile/notifications/${id}`,
+    TEST_NOTIFICATION: '/api/mobile/test-notification',
+  },
 };
 
 // Secure Storage Keys
@@ -44,6 +52,7 @@ export const STORAGE_KEYS = {
   APP_LOCK_ENABLED: 'securemail_app_lock',
   NOTIFICATION_PREFS: 'securemail_notification_prefs',
   BIOMETRIC_TOKEN: 'securemail_biometric_token',
+  PUSH_TOKEN: 'securemail_push_token',
 };
 
 // Email Folders

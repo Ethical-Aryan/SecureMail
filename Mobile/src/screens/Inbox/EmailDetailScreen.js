@@ -1,18 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  StyleSheet, StatusBar, Alert, TextInput, Modal,
+  StyleSheet, Alert, TextInput, Modal,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import Avatar from '../../components/common/Avatar';
 import Button from '../../components/common/Button';
 import useMail from '../../hooks/useMail';
+import { useTheme } from '../../context/ThemeContext';
 import { formatFullDate } from '../../utils/helpers';
 
 export default function EmailDetailScreen({ route, navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const { email } = route.params;
   const { toggleStar, deleteEmail, decryptEmail } = useMail();
 
@@ -59,12 +61,14 @@ export default function EmailDetailScreen({ route, navigation }) {
       setDecryptError('Please enter the passkey');
       return;
     }
+
     setIsDecrypting(true);
     setDecryptError(null);
 
     const result = await decryptEmail(email.id, passkey);
+    setIsDecrypting(false);
 
-    if (result.success) {
+    if (result.success && result.data?.body) {
       setDecryptedBody(result.data.body);
       if (result.data.attachment) {
         setDecryptedAttachment(result.data.attachment);
@@ -72,33 +76,41 @@ export default function EmailDetailScreen({ route, navigation }) {
       setShowDecryptModal(false);
       setPasskey('');
     } else {
-      setDecryptError(result.error || 'Incorrect passkey');
+      setDecryptError(result.error || 'Failed to decrypt email');
     }
-    setIsDecrypting(false);
-  }, [email.id, passkey, decryptEmail]);
+  }, [passkey, email.id, decryptEmail]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerBtn}>
-          <Feather name="arrow-left" size={24} color={COLORS.textPrimary} />
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.headerBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Feather name="arrow-left" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
+
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={handleToggleStar} style={styles.headerBtn}>
+          <TouchableOpacity
+            onPress={handleToggleStar}
+            style={styles.headerBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
             <Feather
               name="star"
-              size={24}
-              color={isStarred ? COLORS.warning : COLORS.textTertiary}
+              size={20}
+              color={isStarred ? colors.warning : colors.textTertiary}
             />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleDelete} style={styles.headerBtn}>
-            <Feather name="trash-2" size={24} color={COLORS.textTertiary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.headerBtn}>
-            <Feather name="more-vertical" size={24} color={COLORS.textTertiary} />
+
+          <TouchableOpacity
+            onPress={handleDelete}
+            style={styles.headerBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Feather name="trash-2" size={20} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </View>
@@ -110,78 +122,90 @@ export default function EmailDetailScreen({ route, navigation }) {
         {/* Sender Info */}
         <View style={styles.senderContainer}>
           <View style={styles.senderRow}>
-            <Avatar email={email.senderEmail} initials={email.initials} size={42} />
+            <Avatar email={email.senderEmail} initials={email.initials} size={48} />
             <View style={styles.senderInfo}>
               <View style={styles.senderNameRow}>
-                <Text style={styles.senderNameLabel}>From: </Text>
-                <Text style={styles.senderNameValue}>{email.sender}</Text>
+                <Text style={[styles.senderNameLabel, { color: colors.textSecondary }]}>From:</Text>
+                <Text style={[styles.senderNameValue, { color: colors.textPrimary }]}>{email.sender}</Text>
               </View>
               <View style={styles.senderNameRow}>
-                <Text style={styles.senderNameLabel}>To: </Text>
-                <Text style={styles.senderNameValue}>Me</Text>
+                <Text style={[styles.senderNameLabel, { color: colors.textSecondary }]}>To:</Text>
+                <Text style={[styles.senderNameValue, { color: colors.textPrimary }]}>
+                  {email.owner_email || 'me@securemail.com'}
+                </Text>
               </View>
             </View>
           </View>
         </View>
 
-        {/* Subject & Time */}
+        {/* Subject & Date */}
         <View style={styles.subjectContainer}>
-          <Text style={styles.subject}>{email.subject}</Text>
-          <Text style={styles.timeText}>Sent: {formatFullDate(email.time)}</Text>
+          <Text style={[styles.subject, { color: colors.textPrimary }]}>{email.subject}</Text>
+          <Text style={[styles.timeText, { color: colors.textTertiary }]}>{formatFullDate(email.time)}</Text>
         </View>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: colors.border }]} />
 
-        {/* Encrypted Lock Banner */}
-        {(email.locked || decryptedBody) && (
-          <View style={styles.encryptedBanner}>
-            <Feather name={decryptedBody ? "unlock" : "shield"} size={20} color={COLORS.success} />
+        {/* Encrypted Banner / Decrypt Button */}
+        {email.locked && (
+          <View style={[styles.encryptedBanner, { backgroundColor: isDark ? '#064E3B' : colors.successLight }]}>
+            <Feather name="shield" size={20} color={colors.success} />
             <View style={styles.encryptedBannerTextContainer}>
-              <Text style={styles.encryptedBannerTitle}>
-                {decryptedBody ? "Decrypted Message" : "Encrypted Message"}
+              <Text style={[styles.encryptedBannerTitle, { color: colors.success }]}>
+                {decryptedBody ? 'Message Decrypted' : 'End-to-End Encrypted Message'}
               </Text>
-              <Text style={styles.encryptedBannerDesc}>
-                This message is protected by end-to-end encryption. Only you can read it.
+              <Text style={[styles.encryptedBannerDesc, { color: colors.success }]}>
+                {decryptedBody
+                  ? 'This message has been decrypted for this session.'
+                  : 'This email is protected with AES-256 GCM encryption.'}
               </Text>
             </View>
           </View>
         )}
 
-        {isLocked && (
+        {isLocked ? (
           <View style={styles.lockActionContainer}>
             <Button
-              title="Enter Passkey to View"
+              title="Decrypt Message"
               onPress={() => setShowDecryptModal(true)}
-              icon="lock"
+              variant="primary"
+              icon="key"
               iconPosition="left"
             />
           </View>
-        )}
-
-        {/* Email Body */}
-        {!isLocked && (
+        ) : (
           <View style={styles.bodyContainer}>
             {Array.isArray(displayBody) ? (
               displayBody.map((line, index) => (
-                <Text key={index} style={styles.bodyText}>
-                  {line || '\n'}
+                <Text key={index} style={[styles.bodyText, { color: colors.textPrimary }]}>
+                  {line}
                 </Text>
               ))
             ) : (
-              <Text style={styles.bodyText}>{displayBody}</Text>
+              <Text style={[styles.bodyText, { color: colors.textPrimary }]}>{displayBody}</Text>
             )}
           </View>
         )}
 
-        {/* Attachment */}
-        {displayAttachment && !isLocked && (
+        {/* Attachment Section */}
+        {displayAttachment && (
           <View style={styles.attachmentContainer}>
-            <View style={styles.attachmentIcon}>
-              <Feather name="file-text" size={24} color={COLORS.primary} />
-            </View>
-            <View style={styles.attachmentInfo}>
-              <Text style={styles.attachmentName}>{displayAttachment.name}</Text>
-              <Text style={styles.attachmentSize}>{displayAttachment.size}</Text>
+            <Text style={[styles.attachmentSectionTitle, { color: colors.textSecondary }]}>Attachment</Text>
+            <View style={[styles.attachmentCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={[styles.attachmentIconBox, { backgroundColor: colors.primaryLight + '30' }]}>
+                <Feather name="paperclip" size={20} color={colors.primary} />
+              </View>
+              <View style={styles.attachmentInfo}>
+                <Text style={[styles.attachmentName, { color: colors.textPrimary }]} numberOfLines={1}>
+                  {displayAttachment.name}
+                </Text>
+                <Text style={[styles.attachmentSize, { color: colors.textSecondary }]}>
+                  {displayAttachment.size}
+                </Text>
+              </View>
+              <TouchableOpacity style={styles.downloadBtn}>
+                <Feather name="download" size={18} color={colors.primary} />
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -190,33 +214,36 @@ export default function EmailDetailScreen({ route, navigation }) {
       {/* Decrypt Modal */}
       <Modal
         visible={showDecryptModal}
-        animationType="slide"
         transparent
+        animationType="fade"
         onRequestClose={() => setShowDecryptModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { paddingBottom: insets.bottom + SPACING.xxl }]}>
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Enter Passkey</Text>
-            <Text style={styles.modalDescription}>
+          <View style={[styles.modalCard, { backgroundColor: colors.card }]}>
+            <View style={[styles.modalIconBox, { backgroundColor: `${colors.primary}15` }]}>
+              <Feather name="key" size={24} color={colors.primary} />
+            </View>
+
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Enter Passkey</Text>
+            <Text style={[styles.modalDescription, { color: colors.textSecondary }]}>
               This message is encrypted. Enter the passkey shared by the sender to decrypt.
             </Text>
 
             {decryptError && (
-              <View style={styles.decryptErrorBanner}>
-                <Feather name="alert-circle" size={14} color={COLORS.danger} />
-                <Text style={styles.decryptErrorText}>{decryptError}</Text>
+              <View style={[styles.decryptErrorBanner, { backgroundColor: colors.dangerLight }]}>
+                <Feather name="alert-circle" size={14} color={colors.danger} />
+                <Text style={[styles.decryptErrorText, { color: colors.danger }]}>{decryptError}</Text>
               </View>
             )}
 
-            <View style={styles.passkeyInputWrapper}>
-              <Feather name="key" size={18} color={COLORS.textTertiary} />
+            <View style={[styles.passkeyInputWrapper, { backgroundColor: colors.inputBg, borderColor: colors.inputBorder }]}>
+              <Feather name="key" size={18} color={colors.textTertiary} />
               <TextInput
-                style={styles.passkeyInput}
+                style={[styles.passkeyInput, { color: colors.textPrimary }]}
                 value={passkey}
                 onChangeText={(text) => { setPasskey(text); setDecryptError(null); }}
                 placeholder="Enter passkey..."
-                placeholderTextColor={COLORS.textTertiary}
+                placeholderTextColor={colors.textTertiary}
                 secureTextEntry
                 autoFocus
                 returnKeyType="go"
@@ -236,7 +263,7 @@ export default function EmailDetailScreen({ route, navigation }) {
               onPress={() => { setShowDecryptModal(false); setPasskey(''); setDecryptError(null); }}
               style={styles.cancelButton}
             >
-              <Text style={styles.cancelText}>Cancel</Text>
+              <Text style={[styles.cancelText, { color: colors.textSecondary }]}>Cancel</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -248,7 +275,6 @@ export default function EmailDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -286,12 +312,10 @@ const styles = StyleSheet.create({
   },
   senderNameLabel: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
     width: 45,
   },
   senderNameValue: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
   },
   subjectContainer: {
     paddingHorizontal: SPACING.xl,
@@ -299,23 +323,19 @@ const styles = StyleSheet.create({
   },
   subject: {
     ...TYPOGRAPHY.h3,
-    color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
   timeText: {
     ...TYPOGRAPHY.captionMedium,
-    color: COLORS.textTertiary,
   },
   divider: {
     height: 1,
-    backgroundColor: COLORS.borderLight,
     marginVertical: SPACING.lg,
     marginHorizontal: SPACING.xl,
   },
   encryptedBanner: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.successLight,
     padding: SPACING.lg,
     marginHorizontal: SPACING.xl,
     borderRadius: BORDER_RADIUS.md,
@@ -327,12 +347,10 @@ const styles = StyleSheet.create({
   },
   encryptedBannerTitle: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.success,
     marginBottom: 4,
   },
   encryptedBannerDesc: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.success,
     lineHeight: 18,
   },
   lockActionContainer: {
@@ -345,25 +363,30 @@ const styles = StyleSheet.create({
   },
   bodyText: {
     ...TYPOGRAPHY.body,
-    color: COLORS.textPrimary,
     lineHeight: 26,
     marginBottom: 8,
   },
   attachmentContainer: {
+    paddingHorizontal: SPACING.xl,
+    marginTop: SPACING.xxl,
+  },
+  attachmentSectionTitle: {
+    ...TYPOGRAPHY.captionBold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: SPACING.sm,
+  },
+  attachmentCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    marginHorizontal: SPACING.xl,
-    marginTop: SPACING.xl,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    padding: SPACING.md,
     borderRadius: BORDER_RADIUS.md,
+    borderWidth: 1,
   },
-  attachmentIcon: {
+  attachmentIconBox: {
     width: 40,
     height: 40,
-    borderRadius: 8,
-    backgroundColor: '#EDE9FE',
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -373,82 +396,77 @@ const styles = StyleSheet.create({
   },
   attachmentName: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
+    fontWeight: '600',
   },
   attachmentSize: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     marginTop: 2,
   },
-  // Modal
+  downloadBtn: {
+    padding: SPACING.sm,
+  },
   modalOverlay: {
     flex: 1,
-    backgroundColor: COLORS.overlay,
-    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
   },
-  modalContent: {
-    backgroundColor: COLORS.card,
-    borderTopLeftRadius: BORDER_RADIUS.xxl,
-    borderTopRightRadius: BORDER_RADIUS.xxl,
-    paddingHorizontal: SPACING.xxl,
-    paddingTop: SPACING.lg,
+  modalCard: {
+    width: '100%',
+    borderRadius: BORDER_RADIUS.xl,
+    padding: SPACING.xxl,
+    alignItems: 'center',
   },
-  modalHandle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.border,
-    alignSelf: 'center',
-    marginBottom: SPACING.xxl,
+  modalIconBox: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SPACING.lg,
   },
   modalTitle: {
     ...TYPOGRAPHY.h4,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   modalDescription: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
+    textAlign: 'center',
     marginBottom: SPACING.xl,
-    lineHeight: 22,
-  },
-  decryptErrorBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.dangerLight,
-    borderRadius: BORDER_RADIUS.sm,
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.md,
-    marginBottom: SPACING.lg,
-  },
-  decryptErrorText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.danger,
-    marginLeft: SPACING.sm,
   },
   passkeyInputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.inputBg,
+    width: '100%',
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.inputBorder,
     paddingHorizontal: SPACING.md,
     marginBottom: SPACING.xl,
   },
   passkeyInput: {
     flex: 1,
-    paddingVertical: 14,
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textPrimary,
+    paddingVertical: 12,
     marginLeft: SPACING.sm,
+    ...TYPOGRAPHY.bodySmall,
+  },
+  decryptErrorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BORDER_RADIUS.md,
+    padding: SPACING.sm,
+    width: '100%',
+    marginBottom: SPACING.md,
+  },
+  decryptErrorText: {
+    ...TYPOGRAPHY.caption,
+    marginLeft: SPACING.xs,
   },
   cancelButton: {
-    alignItems: 'center',
-    paddingVertical: SPACING.lg,
+    marginTop: SPACING.lg,
+    padding: SPACING.sm,
   },
   cancelText: {
     ...TYPOGRAPHY.buttonSmall,
-    color: COLORS.textSecondary,
   },
 });

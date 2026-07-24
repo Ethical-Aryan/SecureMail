@@ -1,21 +1,23 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, StyleSheet, StatusBar, Platform,
+  KeyboardAvoidingView, StyleSheet, Platform,
 } from 'react-native';
 
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import useAuth from '../../hooks/useAuth';
 import useBiometric from '../../hooks/useBiometric';
+import { useTheme } from '../../context/ThemeContext';
 import secureStorage from '../../utils/secureStorage';
 import { validateEmail, validatePassword } from '../../utils/validators';
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const { login, biometricLogin: contextBiometricLogin, isLoading, error, clearError } = useAuth();
   const { isAvailable, isEnabled, biometricType, biometricLogin } = useBiometric();
 
@@ -47,7 +49,7 @@ export default function LoginScreen({ navigation }) {
 
     setFieldErrors({});
     await login(email, password);
-  }, [email, password, login, clearError, navigation]);
+  }, [email, password, login, clearError]);
 
   const handleBiometricLogin = useCallback(async () => {
     const refreshToken = await biometricLogin();
@@ -71,8 +73,7 @@ export default function LoginScreen({ navigation }) {
   }, [fieldErrors.password]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -84,21 +85,21 @@ export default function LoginScreen({ navigation }) {
         >
           {/* Logo */}
           <View style={styles.logoRow}>
-            <View style={styles.logoBox}>
+            <View style={[styles.logoBox, { backgroundColor: colors.primary }]}>
               <Feather name="shield" size={20} color="#FFFFFF" />
             </View>
-            <Text style={styles.logoText}>SecureMail</Text>
+            <Text style={[styles.logoText, { color: colors.primary }]}>SecureMail</Text>
           </View>
 
           {/* Heading */}
-          <Text style={styles.heading}>Welcome back</Text>
-          <Text style={styles.subheading}>Sign in to your encrypted inbox</Text>
+          <Text style={[styles.heading, { color: colors.textPrimary }]}>Welcome back</Text>
+          <Text style={[styles.subheading, { color: colors.textSecondary }]}>Sign in to your encrypted inbox</Text>
 
           {/* Error Banner */}
           {error && (
-            <View style={styles.errorBanner}>
-              <Feather name="alert-circle" size={16} color={COLORS.danger} />
-              <Text style={styles.errorBannerText}>{error}</Text>
+            <View style={[styles.errorBanner, { backgroundColor: colors.dangerLight, borderColor: colors.danger }]}>
+              <Feather name="alert-circle" size={16} color={colors.danger} />
+              <Text style={[styles.errorBannerText, { color: colors.danger }]}>{error}</Text>
             </View>
           )}
 
@@ -133,7 +134,7 @@ export default function LoginScreen({ navigation }) {
             onPress={() => navigation.navigate('ForgotPassword')}
             style={styles.forgotPasswordRow}
           >
-            <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+            <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
           </TouchableOpacity>
 
           {/* Continue Button */}
@@ -148,9 +149,9 @@ export default function LoginScreen({ navigation }) {
           {isAvailable && isEnabled && hasBiometricToken && (
             <>
               <View style={styles.dividerRow}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>or</Text>
-                <View style={styles.dividerLine} />
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
+                <Text style={[styles.dividerText, { color: colors.textTertiary }]}>or</Text>
+                <View style={[styles.dividerLine, { backgroundColor: colors.border }]} />
               </View>
 
               <Button
@@ -165,16 +166,16 @@ export default function LoginScreen({ navigation }) {
 
           {/* Register Link */}
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>New here? </Text>
+            <Text style={[styles.registerText, { color: colors.textSecondary }]}>New here? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-              <Text style={styles.registerLink}>Create an account</Text>
+              <Text style={[styles.registerLink, { color: colors.primary }]}>Create an account</Text>
             </TouchableOpacity>
           </View>
 
           {/* Footer */}
           <View style={styles.footerRow}>
-            <Feather name="shield" size={12} color={COLORS.textTertiary} />
-            <Text style={styles.footerText}>Protected by end-to-end encryption</Text>
+            <Feather name="shield" size={12} color={colors.textTertiary} />
+            <Text style={[styles.footerText, { color: colors.textTertiary }]}>Protected by end-to-end encryption</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -185,7 +186,6 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   flex: {
     flex: 1,
@@ -205,39 +205,32 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
   },
   logoText: {
     ...TYPOGRAPHY.h5,
-    color: COLORS.primary,
     marginLeft: SPACING.sm,
   },
   heading: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
     marginBottom: SPACING.sm,
   },
   subheading: {
     ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
     marginBottom: SPACING.xxxl,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.dangerLight,
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.xl,
     borderWidth: 1,
-    borderColor: '#FECACA',
   },
   errorBannerText: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.danger,
     marginLeft: SPACING.sm,
     flex: 1,
   },
@@ -252,7 +245,6 @@ const styles = StyleSheet.create({
   },
   forgotPasswordText: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.primary,
     fontWeight: '600',
   },
   dividerRow: {
@@ -263,11 +255,9 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: COLORS.border,
   },
   dividerText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     marginHorizontal: SPACING.lg,
   },
   registerRow: {
@@ -278,11 +268,9 @@ const styles = StyleSheet.create({
   },
   registerText: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
   },
   registerLink: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.primary,
     fontWeight: '700',
   },
   footerRow: {
@@ -293,7 +281,6 @@ const styles = StyleSheet.create({
   },
   footerText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     marginLeft: SPACING.xs,
   },
 });

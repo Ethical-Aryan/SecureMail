@@ -1,24 +1,27 @@
 import React, { memo } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
-import { COLORS } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const Loader = memo(({
   size = 'large',
-  color = COLORS.primary,
+  color,
   fullScreen = false,
   style,
 }) => {
+  const { colors } = useTheme();
+  const loaderColor = color || colors.primary;
+
   if (fullScreen) {
     return (
-      <View style={[styles.fullScreen, style]}>
-        <ActivityIndicator size={size} color={color} />
+      <View style={[styles.fullScreen, { backgroundColor: colors.background }, style]}>
+        <ActivityIndicator size={size} color={loaderColor} />
       </View>
     );
   }
 
   return (
     <View style={[styles.inline, style]}>
-      <ActivityIndicator size={size} color={color} />
+      <ActivityIndicator size={size} color={loaderColor} />
     </View>
   );
 });
@@ -30,7 +33,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
   },
   inline: {
     padding: 20,

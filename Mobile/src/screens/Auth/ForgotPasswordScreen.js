@@ -1,26 +1,26 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  KeyboardAvoidingView, StyleSheet, StatusBar, Platform,
-  Animated, Dimensions, ActivityIndicator,
+  KeyboardAvoidingView, StyleSheet, Platform,
+  Animated, Dimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import Input from '../../components/common/Input';
 import Button from '../../components/common/Button';
 import authService from '../../services/authService';
+import { useTheme } from '../../context/ThemeContext';
 import { validateEmail, validatePassword } from '../../utils/validators';
 
 const OTP_EXPIRY_SECONDS = 60;
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ForgotPasswordScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
 
-  // ─── State ───────────────────────────────────────────────
-  const [step, setStep] = useState(1); // 1 = request OTP, 2 = verify & reset
+  const [step, setStep] = useState(1);
   const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -32,13 +32,11 @@ export default function ForgotPasswordScreen({ navigation }) {
   const [countdown, setCountdown] = useState(OTP_EXPIRY_SECONDS);
   const [canResend, setCanResend] = useState(false);
 
-  // ─── Animations ──────────────────────────────────────────
   const slideAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const cardScale = useRef(new Animated.Value(0.95)).current;
   const cardOpacity = useRef(new Animated.Value(0)).current;
 
-  // Mount animation
   useEffect(() => {
     Animated.parallel([
       Animated.spring(cardScale, {
@@ -55,10 +53,8 @@ export default function ForgotPasswordScreen({ navigation }) {
     ]).start();
   }, []);
 
-  // ─── Countdown Timer for OTP ─────────────────────────────
   useEffect(() => {
     if (step !== 2) return;
-
     setCountdown(OTP_EXPIRY_SECONDS);
     setCanResend(false);
 
@@ -76,70 +72,50 @@ export default function ForgotPasswordScreen({ navigation }) {
     return () => clearInterval(timer);
   }, [step]);
 
-  // ─── Transition to Step 2 ────────────────────────────────
-  const transitionToStep2 = useCallback(() => {
-    Animated.sequence([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: -SCREEN_WIDTH,
-        duration: 0,
-        useNativeDriver: true,
-      }),
+  const animateToStep = (targetStep) => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 0, duration: 150, useNativeDriver: true }),
+      Animated.timing(slideAnim, { toValue: -30, duration: 150, useNativeDriver: true }),
     ]).start(() => {
-      setStep(2);
-      slideAnim.setValue(SCREEN_WIDTH * 0.3);
+      setStep(targetStep);
+      slideAnim.setValue(30);
       Animated.parallel([
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 20,
-          stiffness: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
+        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+        Animated.spring(slideAnim, { toValue: 0, damping: 18, stiffness: 120, useNativeDriver: true }),
       ]).start();
     });
-  }, [fadeAnim, slideAnim]);
+  };
 
-  // ─── Step 1: Request OTP ─────────────────────────────────
   const handleRequestOtp = useCallback(async () => {
     setApiError(null);
     setApiSuccess(null);
-
     const emailResult = validateEmail(email);
     if (!emailResult.valid) {
       setFieldErrors({ email: emailResult.error });
       return;
     }
+
     setFieldErrors({});
     setIsLoading(true);
 
     try {
-      const data = await authService.requestPasswordReset(email);
-      setApiSuccess(data.message || 'OTP sent! Check the server terminal.');
-      transitionToStep2();
+      const response = await authService.forgotPassword(email);
+      setApiSuccess(response.message || 'OTP sent to your email.');
+      setTimeout(() => animateToStep(2), 600);
     } catch (error) {
-      setApiError(error.userMessage || 'Failed to send OTP. Please try again.');
+      setApiError(error.userMessage || 'Failed to send OTP. Try again.');
     } finally {
       setIsLoading(false);
     }
-  }, [email, transitionToStep2]);
+  }, [email]);
 
-  // ─── Step 2: Reset Password ──────────────────────────────
   const handleResetPassword = useCallback(async () => {
     setApiError(null);
     setApiSuccess(null);
     const errors = {};
 
-    if (!otp || otp.trim().length !== 6) {
-      errors.otp = 'Enter the 6-digit OTP code';
+    if (!otp.trim() || otp.trim().length !== 6) {
+      errors.otp = '6-digit OTP code is required';
     }
 
     const passResult = validatePassword(newPassword);
@@ -155,25 +131,21 @@ export default function ForgotPasswordScreen({ navigation }) {
       setFieldErrors(errors);
       return;
     }
+
     setFieldErrors({});
     setIsLoading(true);
 
     try {
-      const data = await authService.resetPassword(email, otp, newPassword);
-      setApiSuccess(data.message || 'Password reset successfully!');
-
-      // Navigate back to login after a short delay
-      setTimeout(() => {
-        navigation.navigate('Login');
-      }, 2000);
+      const response = await authService.resetPassword(email, otp.trim(), newPassword);
+      setApiSuccess(response.message || 'Password reset successfully!');
+      setTimeout(() => navigation.replace('Login'), 1500);
     } catch (error) {
-      setApiError(error.userMessage || 'Password reset failed. Please try again.');
+      setApiError(error.userMessage || 'Failed to reset password.');
     } finally {
       setIsLoading(false);
     }
   }, [email, otp, newPassword, confirmPassword, navigation]);
 
-  // ─── Resend OTP ──────────────────────────────────────────
   const handleResend = useCallback(async () => {
     if (!canResend) return;
     setApiError(null);
@@ -181,22 +153,10 @@ export default function ForgotPasswordScreen({ navigation }) {
     setIsLoading(true);
 
     try {
-      await authService.requestPasswordReset(email);
-      setApiSuccess('A new OTP has been sent.');
+      const response = await authService.forgotPassword(email);
+      setApiSuccess(response.message || 'A new OTP has been sent.');
       setCountdown(OTP_EXPIRY_SECONDS);
       setCanResend(false);
-
-      // Restart timer
-      const timer = setInterval(() => {
-        setCountdown((prev) => {
-          if (prev <= 1) {
-            clearInterval(timer);
-            setCanResend(true);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
     } catch (error) {
       setApiError(error.userMessage || 'Failed to resend OTP.');
     } finally {
@@ -204,22 +164,19 @@ export default function ForgotPasswordScreen({ navigation }) {
     }
   }, [email, canResend]);
 
-  // ─── Format countdown ────────────────────────────────────
   const formatCountdown = (seconds) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
     return `${m}:${s.toString().padStart(2, '0')}`;
   };
 
-  // ─── Render ──────────────────────────────────────────────
   return (
     <LinearGradient
-      colors={['#F7F2EA', '#EDE5FA', '#E0D4F5']}
+      colors={colors.gradient.splash}
       style={styles.gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -235,16 +192,16 @@ export default function ForgotPasswordScreen({ navigation }) {
           {/* Back Button */}
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.card }]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Feather name="arrow-left" size={22} color={COLORS.textPrimary} />
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
 
           {/* Icon */}
           <View style={styles.iconWrapper}>
             <LinearGradient
-              colors={COLORS.gradient.primary}
+              colors={colors.gradient.primary}
               style={styles.iconCircle}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -258,16 +215,16 @@ export default function ForgotPasswordScreen({ navigation }) {
           </View>
 
           {/* Title */}
-          <Text style={styles.heading}>
+          <Text style={[styles.heading, { color: colors.textPrimary }]}>
             {step === 1 ? 'Reset Password' : 'Verify & Reset'}
           </Text>
-          <Text style={styles.subheading}>
+          <Text style={[styles.subheading, { color: colors.textSecondary }]}>
             {step === 1
               ? 'Enter your email and we\'ll send a one-time code to verify your identity.'
               : `Enter the 6-digit code sent to ${email} and choose a new password.`}
           </Text>
 
-          {/* ─── Glassmorphism Card ─────────────────────────── */}
+          {/* Glassmorphism Card */}
           <Animated.View
             style={[
               styles.glassCard,
@@ -280,27 +237,23 @@ export default function ForgotPasswordScreen({ navigation }) {
               },
             ]}
           >
-            {/* Inner frosted border */}
-            <View style={styles.glassInner}>
-              {/* API Error */}
+            <View style={[styles.glassInner, { backgroundColor: colors.card, borderColor: colors.border }]}>
               {apiError && (
-                <View style={styles.errorBanner}>
-                  <Feather name="alert-circle" size={16} color={COLORS.danger} />
-                  <Text style={styles.errorBannerText}>{apiError}</Text>
+                <View style={[styles.errorBanner, { backgroundColor: colors.dangerLight, borderColor: colors.danger }]}>
+                  <Feather name="alert-circle" size={16} color={colors.danger} />
+                  <Text style={[styles.errorBannerText, { color: colors.danger }]}>{apiError}</Text>
                 </View>
               )}
 
-              {/* API Success */}
               {apiSuccess && (
-                <View style={styles.successBanner}>
-                  <Feather name="check-circle" size={16} color={COLORS.success} />
-                  <Text style={styles.successBannerText}>{apiSuccess}</Text>
+                <View style={[styles.successBanner, { backgroundColor: colors.successLight, borderColor: colors.success }]}>
+                  <Feather name="check-circle" size={16} color={colors.success} />
+                  <Text style={[styles.successBannerText, { color: colors.success }]}>{apiSuccess}</Text>
                 </View>
               )}
 
               {step === 1 ? (
                 <>
-                  {/* Step 1: Email Input */}
                   <Input
                     label="Email address"
                     value={email}
@@ -325,22 +278,21 @@ export default function ForgotPasswordScreen({ navigation }) {
                 </>
               ) : (
                 <>
-                  {/* Step 2: OTP + New Password */}
-
-                  {/* Countdown */}
                   <View style={styles.countdownRow}>
                     <View style={[
                       styles.countdownBadge,
-                      countdown === 0 && styles.countdownExpired,
+                      { backgroundColor: isDark ? '#312E81' : '#EDE9FE', borderColor: colors.primary },
+                      countdown === 0 && { backgroundColor: colors.dangerLight, borderColor: colors.danger },
                     ]}>
                       <Feather
                         name="clock"
                         size={14}
-                        color={countdown > 0 ? COLORS.primary : COLORS.danger}
+                        color={countdown > 0 ? colors.primary : colors.danger}
                       />
                       <Text style={[
                         styles.countdownText,
-                        countdown === 0 && styles.countdownTextExpired,
+                        { color: colors.primary },
+                        countdown === 0 && { color: colors.danger },
                       ]}>
                         {countdown > 0
                           ? `Expires in ${formatCountdown(countdown)}`
@@ -353,7 +305,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                     label="6-Digit OTP Code"
                     value={otp}
                     onChangeText={(t) => {
-                      // Only allow digits, max 6
                       const cleaned = t.replace(/[^0-9]/g, '').slice(0, 6);
                       setOtp(cleaned);
                       setFieldErrors((prev) => ({ ...prev, otp: null }));
@@ -397,7 +348,6 @@ export default function ForgotPasswordScreen({ navigation }) {
                     style={styles.actionButton}
                   />
 
-                  {/* Resend link */}
                   <TouchableOpacity
                     onPress={handleResend}
                     disabled={!canResend || isLoading}
@@ -405,7 +355,8 @@ export default function ForgotPasswordScreen({ navigation }) {
                   >
                     <Text style={[
                       styles.resendText,
-                      (!canResend || isLoading) && styles.resendTextDisabled,
+                      { color: colors.primary },
+                      (!canResend || isLoading) && { color: colors.textTertiary },
                     ]}>
                       {canResend ? 'Resend OTP' : `Resend in ${formatCountdown(countdown)}`}
                     </Text>
@@ -415,10 +366,9 @@ export default function ForgotPasswordScreen({ navigation }) {
             </View>
           </Animated.View>
 
-          {/* Footer */}
           <View style={styles.footerRow}>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.footerLink}>← Back to Sign In</Text>
+              <Text style={[styles.footerLink, { color: colors.primary }]}>← Back to Sign In</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -427,7 +377,6 @@ export default function ForgotPasswordScreen({ navigation }) {
   );
 }
 
-// ─── Styles ────────────────────────────────────────────────
 const styles = StyleSheet.create({
   gradient: {
     flex: 1,
@@ -443,107 +392,72 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.xxl,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.08,
-        shadowRadius: 6,
-      },
-      android: { elevation: 3 },
-    }),
   },
   iconWrapper: {
     alignItems: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: SPACING.lg,
   },
   iconCircle: {
     width: 64,
     height: 64,
-    borderRadius: 20,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.colored,
   },
   heading: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
     textAlign: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   subheading: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     marginBottom: SPACING.xxl,
-    paddingHorizontal: SPACING.sm,
+    paddingHorizontal: SPACING.md,
   },
-
-  // ─── Glassmorphism Card ────────────────────────────────
   glassCard: {
     borderRadius: BORDER_RADIUS.xl,
-    overflow: 'hidden',
     marginBottom: SPACING.xxl,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#6B4EFF',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.12,
-        shadowRadius: 24,
-      },
-      android: { elevation: 8 },
-    }),
+    ...SHADOWS.xl,
   },
   glassInner: {
-    backgroundColor: 'rgba(255, 255, 255, 0.72)',
     borderRadius: BORDER_RADIUS.xl,
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.45)',
     padding: SPACING.xxl,
   },
-
-  // ─── Banners ───────────────────────────────────────────
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(239, 68, 68, 0.1)',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
     borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.2)',
   },
   errorBannerText: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.danger,
     marginLeft: SPACING.sm,
     flex: 1,
   },
   successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(16, 185, 129, 0.1)',
     borderRadius: BORDER_RADIUS.md,
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.lg,
     marginBottom: SPACING.lg,
     borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.2)',
   },
   successBannerText: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.success,
     marginLeft: SPACING.sm,
     flex: 1,
   },
-
-  // ─── Countdown ─────────────────────────────────────────
   countdownRow: {
     alignItems: 'center',
     marginBottom: SPACING.xl,
@@ -551,54 +465,32 @@ const styles = StyleSheet.create({
   countdownBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(107, 78, 255, 0.08)',
     borderRadius: BORDER_RADIUS.full,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.lg,
     borderWidth: 1,
-    borderColor: 'rgba(107, 78, 255, 0.15)',
-  },
-  countdownExpired: {
-    backgroundColor: 'rgba(239, 68, 68, 0.08)',
-    borderColor: 'rgba(239, 68, 68, 0.15)',
   },
   countdownText: {
     ...TYPOGRAPHY.captionBold,
-    color: COLORS.primary,
     marginLeft: SPACING.sm,
   },
-  countdownTextExpired: {
-    color: COLORS.danger,
-  },
-
-  // ─── Action Button ─────────────────────────────────────
   actionButton: {
     marginTop: SPACING.sm,
   },
-
-  // ─── Resend ────────────────────────────────────────────
   resendRow: {
     alignItems: 'center',
     marginTop: SPACING.xl,
   },
   resendText: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.primary,
     fontWeight: '700',
   },
-  resendTextDisabled: {
-    color: COLORS.textTertiary,
-    fontWeight: '500',
-  },
-
-  // ─── Footer ────────────────────────────────────────────
   footerRow: {
     alignItems: 'center',
     marginTop: SPACING.sm,
   },
   footerLink: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.primary,
     fontWeight: '600',
   },
 });

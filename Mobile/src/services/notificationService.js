@@ -1,53 +1,42 @@
-// ==============================================================
-// Notification Service — Stub (No backend endpoint exists)
-// Generates local notifications from unread email data
-// ==============================================================
+import api from './api';
+import { API_ENDPOINTS } from '../constants/constants';
 
 const notificationService = {
-  /**
-   * NOTE: No /api/notifications endpoint exists in the Flask backend.
-   * Notifications are derived locally from unread emails.
-   * When a backend notification API is added, update this service.
-   */
-
-  generateNotifications(emails) {
-    if (!Array.isArray(emails)) return [];
-
-    const notifications = [];
-
-    const unreadEmails = emails.filter((e) => e.unread && e.folder === 'inbox');
-    unreadEmails.slice(0, 20).forEach((email) => {
-      notifications.push({
-        id: `email-${email.id}`,
-        type: 'new_email',
-        title: 'New message',
-        message: `${email.sender} — ${email.subject}`,
-        time: email.time,
-        read: false,
-        icon: email.locked ? 'lock' : 'mail',
-        emailId: email.id,
-      });
+  async registerPushToken(pushToken, platform) {
+    const response = await api.post(API_ENDPOINTS.MOBILE.REGISTER_PUSH_TOKEN, {
+      push_token: pushToken,
+      platform: platform || 'unknown',
     });
+    return response.data;
+  },
 
-    const encryptedEmails = emails.filter((e) => e.locked && e.folder === 'inbox');
-    encryptedEmails.slice(0, 5).forEach((email) => {
-      notifications.push({
-        id: `encrypted-${email.id}`,
-        type: 'security',
-        title: 'Encrypted message received',
-        message: `A passkey-protected message from ${email.sender}`,
-        time: email.time,
-        read: false,
-        icon: 'shield',
-        emailId: email.id,
-      });
+  async removePushToken(pushToken) {
+    const response = await api.post(API_ENDPOINTS.MOBILE.REMOVE_PUSH_TOKEN, {
+      push_token: pushToken,
     });
+    return response.data;
+  },
 
-    return notifications.sort((a, b) => {
-      const dateA = new Date(a.time);
-      const dateB = new Date(b.time);
-      return dateB - dateA;
+  async fetchNotifications() {
+    const response = await api.get(API_ENDPOINTS.MOBILE.NOTIFICATIONS);
+    return response.data; // { notifications: [...], unread_count: X }
+  },
+
+  async markAsRead(notificationId = null) {
+    const response = await api.put(API_ENDPOINTS.MOBILE.MARK_READ, {
+      notification_id: notificationId,
     });
+    return response.data;
+  },
+
+  async deleteNotification(notificationId) {
+    const response = await api.delete(API_ENDPOINTS.MOBILE.DELETE_NOTIFICATION(notificationId));
+    return response.data;
+  },
+
+  async sendTestNotification() {
+    const response = await api.post(API_ENDPOINTS.MOBILE.TEST_NOTIFICATION);
+    return response.data;
   },
 };
 

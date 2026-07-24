@@ -1,99 +1,203 @@
-import React, { useMemo, useCallback } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import Header from '../../components/common/Header';
 import EmptyView from '../../components/common/EmptyView';
+import Loader from '../../components/common/Loader';
+import useApp from '../../hooks/useApp';
 import useMail from '../../hooks/useMail';
+import { useTheme } from '../../context/ThemeContext';
 import notificationService from '../../services/notificationService';
 import { formatTime } from '../../utils/helpers';
 
 export default function NotificationsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const { showToast, setUnreadNotificationsCount } = useApp();
   const { emails } = useMail();
 
-  const notifications = useMemo(
-    () => notificationService.generateNotifications(emails),
-    [emails]
-  );
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  const handleNotificationPress = useCallback((notification) => {
-    if (notification.emailId) {
-      const email = emails.find((e) => e.id === notification.emailId);
+  const loadNotifications = useCallback(async () => {
+    try {
+      const data = await notificationService.fetchNotifications();
+      setNotifications(data.notifications || []);
+      setUnreadNotificationsCount(data.unread_count || 0);
+    } catch (error) {
+      console.warn('Failed to load notifications from backend:', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [setUnreadNotificationsCount]);
+
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    loadNotifications();
+  }, [loadNotifications]);
+
+  const handleMarkAllRead = useCallback(async () => {
+    try {
+      await notificationService.markAsRead();
+      showToast('All notifications marked as read', 'success');
+      loadNotifications();
+    } catch (error) {
+      showToast('Failed to mark notifications as read', 'error');
+    }
+  }, [loadNotifications, showToast]);
+
+  const handleSendTest = useCallback(async () => {
+    try {
+      await notificationService.sendTestNotification();
+      showToast('Test notification sent from backend', 'success');
+      loadNotifications();
+    } catch (error) {
+      showToast('Failed to send test notification', 'error');
+    }
+  }, [loadNotifications, showToast]);
+
+  const handleDelete = useCallback(async (id) => {
+    try {
+      await notificationService.deleteNotification(id);
+      showToast('Notification deleted', 'info');
+      loadNotifications();
+    } catch (error) {
+      showToast('Failed to delete notification', 'error');
+    }
+  }, [loadNotifications, showToast]);
+
+  const handleNotificationPress = useCallback(async (notification) => {
+    if (!notification.is_read) {
+      try {
+        await notificationService.markAsRead(notification.id);
+        loadNotifications();
+      } catch (e) {
+        // ignore
+      }
+    }
+
+    if (notification.data && notification.data.email_id) {
+      const email = emails.find((e) => e.id === notification.data.email_id);
       if (email) {
-        // Navigate across tabs: go to InboxTab, then push EmailDetail
         navigation.navigate('InboxTab', {
           screen: 'EmailDetail',
           params: { email },
         });
+      } else {
+        navigation.navigate('InboxTab');
       }
     }
-  }, [emails, navigation]);
+  }, [emails, loadNotifications, navigation]);
 
   const renderNotification = useCallback(({ item }) => {
-    const iconColors = {
-      new_email: COLORS.primary,
-      security: COLORS.success,
+    const iconNames = {
+      new_email: 'mail',
+      encrypted_email: 'lock',
+      security_alert: 'shield',
+      info: 'info',
     };
+
+    const iconColors = {
+      new_email: colors.primary,
+      encrypted_email: colors.warning,
+      security_alert: colors.danger,
+      info: colors.primary,
+    };
+
+    const iconName = iconNames[item.type] || 'bell';
+    const iconColor = iconColors[item.type] || colors.primary;
 
     return (
       <TouchableOpacity
-        style={styles.notifCard}
+        style={[
+          styles.notifCard,
+          { backgroundColor: colors.card },
+          !item.is_read && { borderLeftWidth: 3, borderLeftColor: colors.primary },
+          SHADOWS.sm,
+        ]}
         onPress={() => handleNotificationPress(item)}
-        activeOpacity={0.7}
+        activeOpacity={0.75}
       >
-        <View style={[
-          styles.notifIconBox,
-          { backgroundColor: `${iconColors[item.type] || COLORS.primary}15` },
-        ]}>
-          <Feather
-            name={item.icon}
-            size={18}
-            color={iconColors[item.type] || COLORS.primary}
-          />
+        <View style={[styles.notifIconBox, { backgroundColor: `${iconColor}15` }]}>
+          <Feather name={iconName} size={18} color={iconColor} />
         </View>
+
         <View style={styles.notifContent}>
-          <Text style={styles.notifTitle}>{item.title}</Text>
-          <Text style={styles.notifMessage} numberOfLines={2}>{item.message}</Text>
-          <Text style={styles.notifTime}>{formatTime(item.time)}</Text>
+          <Text style={[styles.notifTitle, { color: colors.textPrimary }, !item.is_read && styles.unreadText]}>
+            {item.title}
+          </Text>
+          <Text style={[styles.notifMessage, { color: colors.textSecondary }]} numberOfLines={2}>
+            {item.body}
+          </Text>
+          <Text style={[styles.notifTime, { color: colors.textTertiary }]}>
+            {formatTime(item.created_at)}
+          </Text>
         </View>
-        {!item.read && <View style={styles.unreadDot} />}
+
+        <TouchableOpacity
+          onPress={() => handleDelete(item.id)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          style={styles.deleteBtn}
+        >
+          <Feather name="trash-2" size={14} color={colors.textTertiary} />
+        </TouchableOpacity>
       </TouchableOpacity>
     );
-  }, [handleNotificationPress]);
+  }, [colors, handleDelete, handleNotificationPress]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <Header
-        title="Alerts"
+        title="Alerts & Notifications"
+        rightActions={[
+          { icon: 'check-circle', onPress: handleMarkAllRead },
+          { icon: 'plus-circle', onPress: handleSendTest },
+        ]}
       />
 
-      <FlatList
-        data={notifications}
-        renderItem={renderNotification}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={[
-          styles.listContent,
-          notifications.length === 0 && styles.emptyList,
-        ]}
-        ListEmptyComponent={
-          <EmptyView
-            icon="bell"
-            title="No notifications"
-            message="You're all caught up! New notifications will appear here."
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
+      {loading ? (
+        <Loader fullScreen />
+      ) : (
+        <FlatList
+          data={notifications}
+          renderItem={renderNotification}
+          keyExtractor={(item) => String(item.id)}
+          contentContainerStyle={[
+            styles.listContent,
+            notifications.length === 0 && styles.emptyList,
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={colors.primary}
+              colors={[colors.primary]}
+            />
+          }
+          ListEmptyComponent={
+            <EmptyView
+              icon="bell"
+              title="No notifications"
+              message="You're all caught up! Real-time alerts will appear here."
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       {notifications.length > 0 && (
-        <View style={styles.footer}>
-          <Feather name="info" size={12} color={COLORS.textTertiary} />
-          <Text style={styles.footerText}>
-            Notifications generated from unread emails
+        <View style={[styles.footer, { borderTopColor: colors.border }]}>
+          <Feather name="shield" size={12} color={colors.textTertiary} />
+          <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+            Flask REST Backend Managed Notifications
           </Text>
         </View>
       )}
@@ -104,10 +208,10 @@ export default function NotificationsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   listContent: {
     paddingHorizontal: SPACING.xl,
+    paddingTop: SPACING.md,
     paddingBottom: SPACING.xxxxl,
   },
   emptyList: {
@@ -116,11 +220,9 @@ const styles = StyleSheet.create({
   notifCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.card,
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
+    marginBottom: SPACING.md,
   },
   notifIconBox: {
     width: 40,
@@ -135,27 +237,23 @@ const styles = StyleSheet.create({
   },
   notifTitle: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
     fontWeight: '600',
+  },
+  unreadText: {
+    fontWeight: '700',
   },
   notifMessage: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     marginTop: 3,
     lineHeight: 18,
   },
   notifTime: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     marginTop: 4,
     fontSize: 11,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.primary,
-    marginTop: 6,
+  deleteBtn: {
+    padding: 4,
   },
   footer: {
     flexDirection: 'row',
@@ -163,11 +261,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
   },
   footerText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     marginLeft: SPACING.xs,
   },
 });

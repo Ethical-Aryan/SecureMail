@@ -130,6 +130,19 @@ const secureStorage = {
     return this.getItem(STORAGE_KEYS.THEME_MODE);
   },
 
+  // Push Token
+  async setPushToken(token) {
+    return this.setItem(STORAGE_KEYS.PUSH_TOKEN, token);
+  },
+
+  async getPushToken() {
+    return this.getItem(STORAGE_KEYS.PUSH_TOKEN);
+  },
+
+  async clearPushToken() {
+    return this.removeItem(STORAGE_KEYS.PUSH_TOKEN);
+  },
+
   // Clear All
   async clearAll() {
     const allKeys = Object.values(STORAGE_KEYS);

@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { View, FlatList, TouchableOpacity, Text, StyleSheet, RefreshControl, StatusBar } from 'react-native';
+import { View, FlatList, TouchableOpacity, Text, StyleSheet, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import EmailCard from '../../components/cards/EmailCard';
 import Avatar from '../../components/common/Avatar';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
@@ -10,6 +10,7 @@ import EmptyView from '../../components/common/EmptyView';
 import ErrorView from '../../components/common/ErrorView';
 import useMail from '../../hooks/useMail';
 import useAuth from '../../hooks/useAuth';
+import { useTheme } from '../../context/ThemeContext';
 
 const FILTER_TABS = [
   { key: 'all', label: 'All' },
@@ -19,6 +20,7 @@ const FILTER_TABS = [
 
 export default function InboxScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const { user } = useAuth();
   const { emails, isLoading, isRefreshing, error, fetchEmails, toggleStar, markAsRead, deleteEmail } = useMail();
 
@@ -76,8 +78,7 @@ export default function InboxScreen({ navigation }) {
 
   if (isLoading && emails.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <LoadingSkeleton type="email" count={6} />
       </View>
     );
@@ -85,8 +86,7 @@ export default function InboxScreen({ navigation }) {
 
   if (error && emails.length === 0) {
     return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
+      <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
         <ErrorView
           title="Failed to load emails"
           message={error}
@@ -97,27 +97,25 @@ export default function InboxScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <Avatar 
             email={user?.email || 'user@example.com'} 
-            initials={user?.name ? user.name.substring(0,2).toUpperCase() : 'AM'} 
+            initials={user?.email ? user.email.substring(0, 2).toUpperCase() : 'AM'} 
             size={36} 
           />
         </View>
-        <Text style={styles.title}>Inbox</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>Inbox</Text>
         <TouchableOpacity style={styles.headerRight}>
-          <Feather name="search" size={24} color={COLORS.textPrimary} />
+          <Feather name="search" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* Subheading */}
       <View style={styles.subheadingRow}>
-        <Text style={styles.subheadingText}>
+        <Text style={[styles.subheadingText, { color: colors.textSecondary }]}>
           {unreadCount} unread · Encrypted inbox
         </Text>
       </View>
@@ -130,11 +128,15 @@ export default function InboxScreen({ navigation }) {
             <TouchableOpacity
               key={tab.key}
               onPress={() => setActiveFilter(tab.key)}
-              style={[styles.tab, isActive && styles.activeTab]}
+              style={[
+                styles.tab,
+                { backgroundColor: isActive ? colors.primary : colors.card },
+                isActive && SHADOWS.sm,
+              ]}
               accessibilityRole="tab"
               accessibilityState={{ selected: isActive }}
             >
-              <Text style={[styles.tabText, isActive && styles.activeTabText]}>
+              <Text style={[styles.tabText, { color: isActive ? '#FFFFFF' : colors.textSecondary }]}>
                 {tab.label}
               </Text>
             </TouchableOpacity>
@@ -155,8 +157,8 @@ export default function InboxScreen({ navigation }) {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
+            colors={[colors.primary]}
+            tintColor={colors.primary}
           />
         }
         ListEmptyComponent={<EmptyView {...getEmptyProps()} />}
@@ -169,7 +171,7 @@ export default function InboxScreen({ navigation }) {
 
       {/* Floating Action Button */}
       <TouchableOpacity
-        style={[styles.fab, { bottom: 16 }]}
+        style={[styles.fab, { backgroundColor: colors.primary, bottom: 16 }]}
         onPress={() => navigation.navigate('ComposeTab')}
         activeOpacity={0.8}
       >
@@ -182,7 +184,6 @@ export default function InboxScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   header: {
     flexDirection: 'row',
@@ -201,57 +202,43 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
   },
   title: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.textPrimary,
+    ...TYPOGRAPHY.h3,
     fontWeight: '700',
   },
   subheadingRow: {
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.sm,
+    marginBottom: SPACING.md,
   },
   subheadingText: {
-    ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
+    ...TYPOGRAPHY.caption,
   },
   tabsContainer: {
     flexDirection: 'row',
     paddingHorizontal: SPACING.lg,
-    paddingBottom: SPACING.md,
+    marginBottom: SPACING.md,
+    gap: SPACING.sm,
   },
   tab: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
+    paddingVertical: SPACING.xs + 2,
+    paddingHorizontal: SPACING.md + 2,
     borderRadius: BORDER_RADIUS.full,
-    marginRight: SPACING.sm,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  activeTab: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
   },
   tabText: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
-  },
-  activeTabText: {
-    color: '#FFFFFF',
     fontWeight: '600',
   },
   listContent: {
-    paddingBottom: SPACING.xxxxl * 2,
+    paddingBottom: 80,
   },
   emptyList: {
     flex: 1,
   },
   fab: {
     position: 'absolute',
-    right: 24,
+    right: 16,
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.colored,

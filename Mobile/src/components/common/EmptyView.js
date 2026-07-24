@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY, SPACING } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const EmptyView = memo(({
   icon = 'inbox',
@@ -10,13 +11,15 @@ const EmptyView = memo(({
   style,
   children,
 }) => {
+  const { colors, isDark } = useTheme();
+
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.iconContainer}>
-        <Feather name={icon} size={40} color={COLORS.primary} />
+      <View style={[styles.iconContainer, { backgroundColor: isDark ? '#312E81' : '#EDE9FE' }]}>
+        <Feather name={icon} size={40} color={colors.primary} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
       {children}
     </View>
   );
@@ -35,20 +38,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#EDE9FE',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
   title: {
     ...TYPOGRAPHY.h5,
-    color: COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: SPACING.sm,
   },
   message: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
   },

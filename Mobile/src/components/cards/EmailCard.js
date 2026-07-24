@@ -1,10 +1,10 @@
 import React, { memo, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import Avatar from '../common/Avatar';
-import Badge from '../common/Badge';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING } from '../../theme/theme';
 import { formatTime, truncateText } from '../../utils/helpers';
+import { useTheme } from '../../context/ThemeContext';
 
 const EmailCard = memo(({
   email,
@@ -12,6 +12,8 @@ const EmailCard = memo(({
   onStar,
   onDelete,
 }) => {
+  const { colors, isDark } = useTheme();
+
   const handlePress = useCallback(() => {
     if (onPress) onPress(email);
   }, [email, onPress]);
@@ -20,12 +22,12 @@ const EmailCard = memo(({
     <TouchableOpacity
       onPress={handlePress}
       activeOpacity={0.7}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: colors.card, borderBottomColor: colors.border }]}
       accessibilityRole="button"
       accessibilityLabel={`Email from ${email.sender}: ${email.subject}`}
     >
       <View style={styles.unreadContainer}>
-        {email.unread && <View style={styles.unreadDot} />}
+        {email.unread && <View style={[styles.unreadDot, { backgroundColor: colors.primary }]} />}
       </View>
 
       <Avatar email={email.senderEmail} initials={email.initials} size={42} />
@@ -34,28 +36,28 @@ const EmailCard = memo(({
         <View style={styles.topRow}>
           <View style={styles.senderContainer}>
             <Text
-              style={[styles.sender, email.unread && styles.unreadText]}
+              style={[styles.sender, { color: colors.textPrimary }, email.unread && styles.unreadText]}
               numberOfLines={1}
             >
               {email.sender}
             </Text>
             {email.locked && (
-              <Feather name="lock" size={12} color={COLORS.primary} style={styles.lockIcon} />
+              <Feather name="lock" size={12} color={colors.primary} style={styles.lockIcon} />
             )}
           </View>
-          <Text style={[styles.time, email.unread && styles.unreadTime]}>
+          <Text style={[styles.time, { color: colors.textTertiary }, email.unread && { color: colors.primary, fontWeight: '600' }]}>
             {formatTime(email.time)}
           </Text>
         </View>
 
         <Text
-          style={[styles.subject, email.unread && styles.unreadText]}
+          style={[styles.subject, { color: colors.textPrimary }, email.unread && styles.unreadText]}
           numberOfLines={1}
         >
           {email.subject}
         </Text>
 
-        <Text style={styles.preview} numberOfLines={2}>
+        <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={2}>
           {truncateText(email.preview, 80)}
         </Text>
       </View>
@@ -71,9 +73,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.xl,
-    backgroundColor: COLORS.background, // Match the screen background
     borderBottomWidth: 1,
-    borderBottomColor: '#EBE5D9', // Subtle divider color
   },
   unreadContainer: {
     width: 12,
@@ -85,7 +85,6 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.primary,
   },
   content: {
     flex: 1,
@@ -104,7 +103,6 @@ const styles = StyleSheet.create({
   },
   sender: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
     fontWeight: '600',
   },
   lockIcon: {
@@ -112,25 +110,17 @@ const styles = StyleSheet.create({
   },
   unreadText: {
     fontWeight: '700',
-    color: '#000000',
   },
   time: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
-  },
-  unreadTime: {
-    color: COLORS.primary,
-    fontWeight: '600',
   },
   subject: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textPrimary,
     marginBottom: 2,
     fontWeight: '500',
   },
   preview: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     lineHeight: 18,
   },
 });

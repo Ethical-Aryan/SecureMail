@@ -1,18 +1,20 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, Switch, TouchableOpacity,
-  KeyboardAvoidingView, StyleSheet, StatusBar, Platform, Alert,
+  KeyboardAvoidingView, StyleSheet, Platform, Alert,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import Input from '../../components/common/Input';
 import useMail from '../../hooks/useMail';
 import useApp from '../../hooks/useApp';
+import { useTheme } from '../../context/ThemeContext';
 import { validateComposeForm, validatePasskey } from '../../utils/validators';
 
 export default function ComposeScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const { sendEmail, isSending } = useMail();
   const { showToast } = useApp();
 
@@ -60,9 +62,9 @@ export default function ComposeScreen({ navigation }) {
     if (recipient || subject || body) {
       Alert.alert(
         'Discard Draft?',
-        'You have unsaved changes. Are you sure you want to discard this email?',
+        'Are you sure you want to discard this email?',
         [
-          { text: 'Keep Writing', style: 'cancel' },
+          { text: 'Keep Editing', style: 'cancel' },
           { text: 'Discard', style: 'destructive', onPress: () => navigation.goBack() },
         ]
       );
@@ -72,21 +74,30 @@ export default function ComposeScreen({ navigation }) {
   }, [recipient, subject, body, navigation]);
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
-      {/* Header */}
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
+      {/* Top Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleDiscard} style={styles.headerLeftBtn}>
-          <Text style={styles.cancelText}>Cancel</Text>
+        <TouchableOpacity
+          onPress={handleDiscard}
+          style={styles.cancelBtn}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text style={[styles.cancelText, { color: colors.textPrimary }]}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>New Message</Text>
+
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Compose</Text>
+
         <TouchableOpacity
           onPress={handleSend}
           disabled={isSending}
-          style={[styles.sendButton, isSending && styles.sendButtonDisabled]}
+          style={[
+            styles.sendButton,
+            { backgroundColor: colors.primary },
+            isSending && { backgroundColor: colors.textTertiary, shadowOpacity: 0 },
+          ]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Feather name="send" size={18} color="#FFFFFF" />
+          <Feather name="send" size={16} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
 
@@ -99,81 +110,97 @@ export default function ComposeScreen({ navigation }) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          {/* To */}
+          {/* Recipient Input */}
           <View style={styles.inputRow}>
-            <Text style={styles.rowLabel}>To:</Text>
-            <Input
-              value={recipient}
-              onChangeText={(t) => { setRecipient(t); setFieldErrors((p) => ({ ...p, recipient: null })); }}
-              placeholder=""
-              keyboardType="email-address"
-              error={fieldErrors.recipient}
-              autoCapitalize="none"
-              variant="underlined"
-              containerStyle={styles.underlinedInputContainer}
-            />
+            <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>To:</Text>
+            <View style={styles.underlinedInputContainer}>
+              <Input
+                value={recipient}
+                onChangeText={(text) => {
+                  setRecipient(text);
+                  if (fieldErrors.recipient) setFieldErrors((p) => ({ ...p, recipient: null }));
+                }}
+                placeholder="recipient@company.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                variant="underlined"
+                error={fieldErrors.recipient}
+              />
+            </View>
           </View>
 
-          {/* Subject */}
+          {/* Subject Input */}
           <View style={styles.inputRow}>
-            <Text style={styles.rowLabel}>Subject:</Text>
-            <Input
-              value={subject}
-              onChangeText={(t) => { setSubject(t); setFieldErrors((p) => ({ ...p, subject: null })); }}
-              placeholder=""
-              error={fieldErrors.subject}
-              maxLength={255}
-              variant="underlined"
-              containerStyle={styles.underlinedInputContainer}
-            />
+            <Text style={[styles.rowLabel, { color: colors.textSecondary }]}>Subject:</Text>
+            <View style={styles.underlinedInputContainer}>
+              <Input
+                value={subject}
+                onChangeText={(text) => {
+                  setSubject(text);
+                  if (fieldErrors.subject) setFieldErrors((p) => ({ ...p, subject: null }));
+                }}
+                placeholder="Message subject"
+                variant="underlined"
+                error={fieldErrors.subject}
+              />
+            </View>
           </View>
 
-          {/* Body */}
-          <Input
-            value={body}
-            onChangeText={(t) => { setBody(t); setFieldErrors((p) => ({ ...p, body: null })); }}
-            placeholder="Write your message..."
-            multiline
-            numberOfLines={12}
-            error={fieldErrors.body}
-            variant="underlined"
-            containerStyle={styles.bodyInputContainer}
-            style={styles.bodyInputWrapper}
-            inputStyle={styles.bodyInputText}
-          />
-
-          {/* Encryption Toggle */}
-          <View style={styles.encryptionCard}>
+          {/* Passkey Encryption Toggle Card */}
+          <View style={[styles.encryptionCard, { backgroundColor: colors.card }, SHADOWS.sm]}>
             <View style={styles.encryptionRow}>
               <View style={styles.encryptionLeft}>
-                <Text style={styles.encryptionLabel}>Encrypt Message</Text>
+                <Text style={[styles.encryptionLabel, { color: colors.textPrimary }]}>Passkey Protection</Text>
                 <Switch
                   value={isEncrypted}
                   onValueChange={setIsEncrypted}
-                  trackColor={{ false: COLORS.border, true: '#C4B5FD' }}
-                  thumbColor={isEncrypted ? COLORS.primary : '#F4F3F4'}
-                  ios_backgroundColor={COLORS.border}
+                  trackColor={{ false: colors.border, true: '#C4B5FD' }}
+                  thumbColor={isEncrypted ? colors.primary : '#F4F3F4'}
                   style={styles.switch}
                 />
               </View>
             </View>
-            <Text style={styles.encryptionDescription}>
-              Passkey will be securely shared with recipient.
+
+            <Text style={[styles.encryptionDescription, { color: colors.textSecondary }]}>
+              {isEncrypted
+                ? 'Message body will be encrypted with AES-256 GCM using your custom passkey.'
+                : 'Enable to encrypt message payload with a shared secret passkey.'}
             </Text>
 
             {isEncrypted && (
-              <View style={styles.passkeySection}>
+              <View style={[styles.passkeySection, { borderTopColor: colors.border }]}>
                 <Input
-                  label="Passkey"
+                  label="Encryption Passkey"
                   value={passkey}
-                  onChangeText={(t) => { setPasskey(t); setFieldErrors((p) => ({ ...p, passkey: null })); }}
-                  placeholder="Enter a passkey"
+                  onChangeText={(text) => {
+                    setPasskey(text);
+                    if (fieldErrors.passkey) setFieldErrors((p) => ({ ...p, passkey: null }));
+                  }}
+                  placeholder="Enter secret passkey"
+                  icon="key"
                   secureTextEntry
                   error={fieldErrors.passkey}
                   containerStyle={styles.passkeyInput}
                 />
               </View>
             )}
+          </View>
+
+          {/* Message Body Input */}
+          <View style={styles.bodyInputContainer}>
+            <Input
+              value={body}
+              onChangeText={(text) => {
+                setBody(text);
+                if (fieldErrors.body) setFieldErrors((p) => ({ ...p, body: null }));
+              }}
+              placeholder="Write your encrypted email here..."
+              multiline
+              numberOfLines={8}
+              error={fieldErrors.body}
+              inputStyle={[styles.bodyInputText, { color: colors.textPrimary }]}
+              style={styles.bodyInputWrapper}
+            />
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -184,7 +211,6 @@ export default function ComposeScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   flex: {
     flex: 1,
@@ -193,33 +219,26 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.md,
   },
-  headerLeftBtn: {
+  cancelBtn: {
     paddingVertical: SPACING.sm,
   },
   cancelText: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
   },
   headerTitle: {
     ...TYPOGRAPHY.h5,
-    color: COLORS.textPrimary,
     fontWeight: '700',
   },
   sendButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
     ...SHADOWS.colored,
-  },
-  sendButtonDisabled: {
-    backgroundColor: COLORS.textTertiary,
-    shadowOpacity: 0,
   },
   scrollContent: {
     paddingHorizontal: SPACING.xl,
@@ -233,7 +252,6 @@ const styles = StyleSheet.create({
   },
   rowLabel: {
     ...TYPOGRAPHY.bodyMedium,
-    color: COLORS.textSecondary,
     marginRight: SPACING.md,
     marginTop: 10,
     width: 65,
@@ -253,14 +271,11 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     fontSize: 16,
     lineHeight: 24,
-    color: COLORS.textPrimary,
   },
   encryptionCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: BORDER_RADIUS.lg,
     padding: SPACING.lg,
     marginBottom: SPACING.xxl,
-    ...SHADOWS.sm,
   },
   encryptionRow: {
     flexDirection: 'row',
@@ -275,7 +290,6 @@ const styles = StyleSheet.create({
   },
   encryptionLabel: {
     ...TYPOGRAPHY.bodyMedium,
-    color: COLORS.textPrimary,
     fontWeight: '600',
   },
   switch: {
@@ -283,13 +297,11 @@ const styles = StyleSheet.create({
   },
   encryptionDescription: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   passkeySection: {
     marginTop: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
     paddingTop: SPACING.lg,
   },
   passkeyInput: {

@@ -196,6 +196,92 @@ def init_db():
     execute_db(create_user_table)
     execute_db(create_emails_table)
 
+###############################################################
+# MOBILE SUPPORT UPDATE
+# Added for React Native Mobile Application
+# Purpose:
+# Initialize database tables for Mobile Device Push Tokens,
+# Mobile Notifications, and Mobile Push Delivery Queue.
+# Do not remove without updating the mobile application.
+###############################################################
+    if DB_TYPE == "mysql":
+        create_devices_table = """
+        CREATE TABLE IF NOT EXISTS devices (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_email VARCHAR(255) NOT NULL,
+            push_token VARCHAR(255) NOT NULL,
+            platform VARCHAR(50) DEFAULT 'unknown',
+            is_active BOOLEAN DEFAULT TRUE,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE KEY user_token (user_email, push_token)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """
+        create_notifications_table = """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_email VARCHAR(255) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            body TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'info',
+            data_json TEXT NULL,
+            is_read BOOLEAN DEFAULT FALSE,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """
+        create_queue_table = """
+        CREATE TABLE IF NOT EXISTS notification_queue (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            user_email VARCHAR(255) NOT NULL,
+            title VARCHAR(255) NOT NULL,
+            body TEXT NOT NULL,
+            type VARCHAR(50) DEFAULT 'info',
+            data_json TEXT NULL,
+            status VARCHAR(50) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+        """
+    else:
+        create_devices_table = """
+        CREATE TABLE IF NOT EXISTS devices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            push_token TEXT NOT NULL,
+            platform TEXT DEFAULT 'unknown',
+            is_active INTEGER DEFAULT 1,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_email, push_token)
+        );
+        """
+        create_notifications_table = """
+        CREATE TABLE IF NOT EXISTS notifications (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            type TEXT DEFAULT 'info',
+            data_json TEXT NULL,
+            is_read INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+        create_queue_table = """
+        CREATE TABLE IF NOT EXISTS notification_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_email TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            type TEXT DEFAULT 'info',
+            data_json TEXT NULL,
+            status TEXT DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    execute_db(create_devices_table)
+    execute_db(create_notifications_table)
+    execute_db(create_queue_table)
+
 # Initialize database tables on startup
 init_db()
 
@@ -442,6 +528,26 @@ def compose_email():
             (sender_email, sender_email, recipient_email, subject, db_body, db_passkey, 1 if is_encrypted else 0, 1, 0, 'sent', attachment_name, attachment_size)
         )
 
+###############################################################
+# MOBILE SUPPORT UPDATE
+# Added for React Native Mobile Application
+# Purpose:
+# Automatically generate a mobile notification for the recipient
+# when a new email is created/sent.
+# Do not remove without updating the mobile application.
+###############################################################
+    import json
+    notif_title = f"New Email from {sender_email.split('@')[0].title()}"
+    notif_body = f"🔒 Encrypted message: {subject}" if is_encrypted else subject
+    notif_type = "encrypted_email" if is_encrypted else "new_email"
+    notif_data = json.dumps({"email_id": recipient_row_id, "sender_email": sender_email, "type": notif_type})
+    
+    execute_db(
+        """INSERT INTO notifications (user_email, title, body, type, data_json, is_read)
+        VALUES (%s, %s, %s, %s, %s, %s)""",
+        (recipient_email, notif_title, notif_body, notif_type, notif_data, 0)
+    )
+
     return jsonify({
         "message": "Secure transmission complete",
         "recipient_email": recipient_email,
@@ -661,6 +767,190 @@ def api_reset_password():
     redis_client.delete(f"pwd_reset:{email}")
     
     return jsonify({"message": "Password reset successfully. You can now log in."}), 200
+
+###############################################################
+# MOBILE SUPPORT UPDATE
+# Added for React Native Mobile Application
+# Purpose:
+# Backend APIs for push token registration, notification listing,
+# marking notifications read, deletion, and test notifications.
+# Do not remove without updating the mobile application.
+###############################################################
+
+@app.route('/api/mobile/register-push-token', methods=['POST'])
+@jwt_required()
+def register_push_token():
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    data = request.get_json() or {}
+    push_token = data.get("push_token", "").strip()
+    platform = data.get("platform", "unknown").strip()
+
+    if not push_token:
+        return jsonify({"error": "Push token is required"}), 400
+
+    execute_db(
+        """INSERT INTO devices (user_email, push_token, platform, is_active)
+        VALUES (%s, %s, %s, %s)
+        ON DUPLICATE KEY UPDATE platform = %s, is_active = %s""",
+        (user_email, push_token, platform, 1, platform, 1)
+    )
+
+    return jsonify({"message": "Push token registered successfully"}), 200
+
+@app.route('/api/mobile/remove-push-token', methods=['POST'])
+@jwt_required()
+def remove_push_token():
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    data = request.get_json() or {}
+    push_token = data.get("push_token", "").strip()
+
+    if push_token:
+        execute_db("DELETE FROM devices WHERE user_email = %s AND push_token = %s", (user_email, push_token))
+    else:
+        execute_db("DELETE FROM devices WHERE user_email = %s", (user_email,))
+
+    return jsonify({"message": "Push token removed successfully"}), 200
+
+@app.route('/api/mobile/notifications', methods=['GET'])
+@jwt_required()
+def get_mobile_notifications():
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    raw_notifications = query_db(
+        "SELECT * FROM notifications WHERE user_email = %s ORDER BY created_at DESC LIMIT 50",
+        (user_email,)
+    )
+
+    import json
+    notifications = []
+    unread_count = 0
+    for n in raw_notifications:
+        is_read = bool(n["is_read"])
+        if not is_read:
+            unread_count += 1
+        
+        parsed_data = None
+        if n["data_json"]:
+            try:
+                parsed_data = json.loads(n["data_json"])
+            except Exception:
+                parsed_data = {}
+
+        notifications.append({
+            "id": n["id"],
+            "title": n["title"],
+            "body": n["body"],
+            "type": n["type"],
+            "data": parsed_data,
+            "is_read": is_read,
+            "created_at": str(n["created_at"])[:19] if n["created_at"] else "Just now"
+        })
+
+    return jsonify({
+        "notifications": notifications,
+        "unread_count": unread_count
+    }), 200
+
+@app.route('/api/mobile/notifications/read', methods=['PUT'])
+@jwt_required()
+def mark_notifications_read():
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    data = request.get_json() or {}
+    notification_id = data.get("notification_id")
+
+    if notification_id:
+        execute_db("UPDATE notifications SET is_read = 1 WHERE id = %s AND user_email = %s", (notification_id, user_email))
+    else:
+        execute_db("UPDATE notifications SET is_read = 1 WHERE user_email = %s", (user_email,))
+
+    return jsonify({"message": "Notifications marked as read"}), 200
+
+@app.route('/api/mobile/notifications/<int:notification_id>', methods=['DELETE'])
+@jwt_required()
+def delete_mobile_notification(notification_id):
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    execute_db("DELETE FROM notifications WHERE id = %s AND user_email = %s", (notification_id, user_email))
+    return jsonify({"message": "Notification deleted successfully"}), 200
+
+@app.route('/api/mobile/test-notification', methods=['POST'])
+@jwt_required()
+def send_test_notification():
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    import json
+    test_title = "🔒 Security Alert"
+    test_body = "This is a test notification from SecureMail backend verification system."
+    test_type = "security_alert"
+    test_data = json.dumps({"test": True, "type": test_type})
+
+    notif_id = execute_db(
+        """INSERT INTO notifications (user_email, title, body, type, data_json, is_read)
+        VALUES (%s, %s, %s, %s, %s, %s)""",
+        (user_email, test_title, test_body, test_type, test_data, 0)
+    )
+
+    return jsonify({
+        "message": "Test notification created successfully",
+        "notification_id": notif_id
+    }), 201
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)

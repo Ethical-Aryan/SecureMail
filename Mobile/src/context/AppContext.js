@@ -1,29 +1,26 @@
 import React, { createContext, useReducer, useCallback, useMemo } from 'react';
 
 // ==============================================================
-// App Context — Global state (theme, toasts, network)
+// App Context — Global state (toasts, network, unread notifications)
 // ==============================================================
 
 export const AppContext = createContext(null);
 
 const APP_ACTIONS = {
-  SET_THEME: 'SET_THEME',
   ADD_TOAST: 'ADD_TOAST',
   REMOVE_TOAST: 'REMOVE_TOAST',
   SET_NETWORK: 'SET_NETWORK',
+  SET_UNREAD_NOTIFICATIONS: 'SET_UNREAD_NOTIFICATIONS',
 };
 
 const initialState = {
-  themeMode: 'light', // 'light' | 'dark'
   toasts: [],
   isOnline: true,
+  unreadNotificationsCount: 0,
 };
 
 function appReducer(state, action) {
   switch (action.type) {
-    case APP_ACTIONS.SET_THEME:
-      return { ...state, themeMode: action.payload };
-
     case APP_ACTIONS.ADD_TOAST:
       return {
         ...state,
@@ -39,6 +36,9 @@ function appReducer(state, action) {
     case APP_ACTIONS.SET_NETWORK:
       return { ...state, isOnline: action.payload };
 
+    case APP_ACTIONS.SET_UNREAD_NOTIFICATIONS:
+      return { ...state, unreadNotificationsCount: action.payload };
+
     default:
       return state;
   }
@@ -48,10 +48,6 @@ let toastId = 0;
 
 export function AppProvider({ children }) {
   const [state, dispatch] = useReducer(appReducer, initialState);
-
-  const setTheme = useCallback((mode) => {
-    dispatch({ type: APP_ACTIONS.SET_THEME, payload: mode });
-  }, []);
 
   const showToast = useCallback((message, type = 'info', duration = 3000) => {
     const id = ++toastId;
@@ -75,15 +71,19 @@ export function AppProvider({ children }) {
     dispatch({ type: APP_ACTIONS.SET_NETWORK, payload: isOnline });
   }, []);
 
+  const setUnreadNotificationsCount = useCallback((count) => {
+    dispatch({ type: APP_ACTIONS.SET_UNREAD_NOTIFICATIONS, payload: count });
+  }, []);
+
   const value = useMemo(
     () => ({
       ...state,
-      setTheme,
       showToast,
       removeToast,
       setNetworkStatus,
+      setUnreadNotificationsCount,
     }),
-    [state, setTheme, showToast, removeToast, setNetworkStatus]
+    [state, showToast, removeToast, setNetworkStatus, setUnreadNotificationsCount]
   );
 
   return (

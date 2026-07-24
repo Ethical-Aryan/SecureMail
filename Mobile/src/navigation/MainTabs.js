@@ -1,9 +1,10 @@
 import React from 'react';
-import { View, StyleSheet, Platform, Text } from 'react-native';
+import { View, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../theme/theme';
+import { TYPOGRAPHY } from '../theme/theme';
+import { useTheme } from '../context/ThemeContext';
 import InboxStack from './InboxStack';
 import SecurityCenterScreen from '../screens/Security/SecurityCenterScreen';
 import NotificationsScreen from '../screens/Notifications/NotificationsScreen';
@@ -13,12 +14,13 @@ const Tab = createBottomTabNavigator();
 
 export default function MainTabs() {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
 
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused, color, size }) => {
+        tabBarIcon: ({ focused, color }) => {
           let iconName;
           switch (route.name) {
             case 'InboxTab':
@@ -40,18 +42,20 @@ export default function MainTabs() {
           return (
             <View style={[
               styles.tabIconContainer,
-              focused && styles.tabIconFocused,
+              focused && { backgroundColor: isDark ? '#312E81' : '#EDE9FE' },
             ]}>
               <Feather name={iconName} size={20} color={color} />
             </View>
           );
         },
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textTertiary,
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.textTertiary,
         tabBarLabelStyle: styles.tabLabel,
         tabBarStyle: [
           styles.tabBar,
           {
+            backgroundColor: colors.card,
+            borderTopColor: colors.border,
             paddingBottom: Math.max(insets.bottom, 8),
             height: 60 + Math.max(insets.bottom, 8),
           },
@@ -85,9 +89,7 @@ export default function MainTabs() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: COLORS.card,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
     ...Platform.select({
       ios: {
         shadowColor: '#000',
@@ -114,8 +116,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  tabIconFocused: {
-    backgroundColor: '#EDE9FE', // Light purple
   },
 });

@@ -1,19 +1,21 @@
 import React, { memo, useEffect, useRef } from 'react';
-import { View, Text, Animated, StyleSheet, TouchableOpacity } from 'react-native';
+import { Text, Animated, StyleSheet, TouchableOpacity } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const Toast = memo(({ toast, onDismiss }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
 
   const typeConfig = {
-    success: { icon: 'check-circle', bg: COLORS.success, iconColor: '#FFFFFF' },
-    error: { icon: 'alert-circle', bg: COLORS.danger, iconColor: '#FFFFFF' },
-    warning: { icon: 'alert-triangle', bg: COLORS.warning, iconColor: '#FFFFFF' },
-    info: { icon: 'info', bg: COLORS.primary, iconColor: '#FFFFFF' },
+    success: { icon: 'check-circle', bg: colors.success, iconColor: '#FFFFFF' },
+    error: { icon: 'alert-circle', bg: colors.danger, iconColor: '#FFFFFF' },
+    warning: { icon: 'alert-triangle', bg: colors.warning, iconColor: '#FFFFFF' },
+    info: { icon: 'info', bg: colors.primary, iconColor: '#FFFFFF' },
   };
 
   const config = typeConfig[toast.type] || typeConfig.info;

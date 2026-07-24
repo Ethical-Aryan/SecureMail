@@ -1,8 +1,10 @@
 import React, { memo, useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { SPACING } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const SkeletonLine = memo(({ width = '100%', height = 16, borderRadius = 8, style }) => {
+  const { colors } = useTheme();
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -32,8 +34,7 @@ const SkeletonLine = memo(({ width = '100%', height = 16, borderRadius = 8, styl
   return (
     <Animated.View
       style={[
-        { width, height, borderRadius, opacity },
-        styles.line,
+        { width, height, borderRadius, opacity, backgroundColor: colors.shimmer },
         style,
       ]}
     />
@@ -41,11 +42,13 @@ const SkeletonLine = memo(({ width = '100%', height = 16, borderRadius = 8, styl
 });
 
 const LoadingSkeleton = memo(({ type = 'email', count = 5 }) => {
+  const { colors } = useTheme();
+
   if (type === 'email') {
     return (
       <View style={styles.container}>
         {Array.from({ length: count }).map((_, index) => (
-          <View key={index} style={styles.emailCard}>
+          <View key={index} style={[styles.emailCard, { borderBottomColor: colors.border }]}>
             <SkeletonLine width={44} height={44} borderRadius={22} />
             <View style={styles.emailContent}>
               <View style={styles.emailTop}>
@@ -97,15 +100,11 @@ const styles = StyleSheet.create({
   container: {
     padding: SPACING.xl,
   },
-  line: {
-    backgroundColor: COLORS.shimmer,
-  },
   emailCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     paddingVertical: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
   },
   emailContent: {
     flex: 1,

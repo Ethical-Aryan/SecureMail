@@ -1,21 +1,45 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet, StatusBar } from 'react-native';
+import { View, Text, ScrollView, Switch, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING } from '../../theme/theme';
 import Card from '../../components/common/Card';
 import useApp from '../../hooks/useApp';
 import useBiometric from '../../hooks/useBiometric';
 import useAuth from '../../hooks/useAuth';
+import { useTheme } from '../../context/ThemeContext';
 import { APP_INFO } from '../../constants/constants';
+import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } from '../../utils/pushNotificationHandler';
 
 export default function SettingsScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { themeMode, setTheme, showToast } = useApp();
+  const { colors } = useTheme();
+  const { themeMode, setThemeMode } = useTheme();
+  const { showToast } = useApp();
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, biometricType, enableBiometric, disableBiometric } = useBiometric();
   const { user } = useAuth();
 
-  const [notifications, setNotifications] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+
+  const handleThemeModeChange = useCallback(async (mode) => {
+    await setThemeMode(mode);
+    showToast(`Theme changed to ${mode} mode`, 'success');
+  }, [setThemeMode, showToast]);
+
+  const handleNotificationToggle = useCallback(async (value) => {
+    setNotificationsEnabled(value);
+    if (value) {
+      const token = await registerForPushNotificationsAsync();
+      if (token) {
+        showToast('Push notifications enabled', 'success');
+      } else {
+        showToast('Push notification permission denied', 'warning');
+      }
+    } else {
+      await unregisterPushNotificationsAsync();
+      showToast('Push notifications disabled', 'info');
+    }
+  }, [showToast]);
 
   const handleBiometricToggle = useCallback(async (value) => {
     if (value) {
@@ -31,129 +55,123 @@ export default function SettingsScreen({ navigation }) {
     }
   }, [enableBiometric, disableBiometric, showToast]);
 
-  const settingsSections = [
-    {
-      title: 'Appearance',
-      items: [
-        {
-          icon: 'moon',
-          label: 'Dark Mode',
-          description: 'Switch to dark theme',
-          type: 'switch',
-          value: themeMode === 'dark',
-          onToggle: (v) => {
-            setTheme(v ? 'dark' : 'light');
-            showToast('Theme support coming soon', 'info');
-          },
-        },
-      ],
-    },
-    {
-      title: 'Security',
-      items: [
-        {
-          icon: 'smartphone',
-          label: biometricType ? `${biometricType} App Lock` : 'Biometric App Lock',
-          description: biometricAvailable
-            ? `Use ${biometricType || 'biometric'} to unlock`
-            : 'Not available on this device',
-          type: 'switch',
-          value: biometricEnabled,
-          onToggle: handleBiometricToggle,
-          disabled: !biometricAvailable,
-        },
-      ],
-    },
-    {
-      title: 'Notifications',
-      items: [
-        {
-          icon: 'bell',
-          label: 'Push Notifications',
-          description: 'Receive notifications for new emails',
-          type: 'switch',
-          value: notifications,
-          onToggle: (v) => {
-            setNotifications(v);
-            showToast('Notification preferences saved locally', 'info');
-          },
-        },
-      ],
-    },
-    {
-      title: 'About',
-      items: [
-        {
-          icon: 'info',
-          label: 'Version',
-          description: APP_INFO.VERSION,
-          type: 'info',
-        },
-        {
-          icon: 'shield',
-          label: 'Privacy Policy',
-          description: 'Read our privacy policy',
-          type: 'link',
-        },
-        {
-          icon: 'file-text',
-          label: 'Terms of Service',
-          description: 'Read our terms',
-          type: 'link',
-        },
-      ],
-    },
-  ];
-
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.screenTitle}>Settings</Text>
+        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>Settings</Text>
 
-        {settingsSections.map((section, sIndex) => (
-          <View key={sIndex} style={styles.section}>
-            <Text style={styles.sectionTitle}>{section.title}</Text>
-            <Card variant="default" padding={0} style={styles.sectionCard}>
-              {section.items.map((item, iIndex) => (
-                <View
-                  key={iIndex}
-                  style={[
-                    styles.settingItem,
-                    iIndex < section.items.length - 1 && styles.settingBorder,
-                  ]}
-                >
-                  <View style={[styles.settingIconBox, { backgroundColor: `${COLORS.primary}10` }]}>
-                    <Feather name={item.icon} size={18} color={COLORS.primary} />
-                  </View>
-                  <View style={styles.settingContent}>
-                    <Text style={styles.settingLabel}>{item.label}</Text>
-                    <Text style={styles.settingDescription}>{item.description}</Text>
-                  </View>
-                  {item.type === 'switch' && (
-                    <Switch
-                      value={item.value}
-                      onValueChange={item.onToggle}
-                      disabled={item.disabled}
-                      trackColor={{ false: COLORS.border, true: '#C4B5FD' }}
-                      thumbColor={item.value ? COLORS.primary : '#F4F3F4'}
-                      ios_backgroundColor={COLORS.border}
-                    />
-                  )}
-                  {item.type === 'link' && (
-                    <Feather name="chevron-right" size={18} color={COLORS.textTertiary} />
-                  )}
-                </View>
-              ))}
-            </Card>
-          </View>
-        ))}
+        {/* Theme Selection */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Theme Preference</Text>
+          <Card variant="default" padding={SPACING.md} style={styles.sectionCard}>
+            <View style={styles.themeOptionsRow}>
+              {[
+                { mode: 'light', label: 'Light', icon: 'sun' },
+                { mode: 'dark', label: 'Dark', icon: 'moon' },
+                { mode: 'system', label: 'System', icon: 'smartphone' },
+              ].map((item) => {
+                const active = themeMode === item.mode;
+                return (
+                  <TouchableOpacity
+                    key={item.mode}
+                    onPress={() => handleThemeModeChange(item.mode)}
+                    style={[
+                      styles.themeOptionBtn,
+                      { backgroundColor: active ? colors.primary : colors.card, borderColor: active ? colors.primary : colors.border },
+                    ]}
+                  >
+                    <Feather name={item.icon} size={20} color={active ? '#FFFFFF' : colors.textPrimary} />
+                    <Text style={[styles.themeOptionLabel, { color: active ? '#FFFFFF' : colors.textPrimary }]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </Card>
+        </View>
 
-        <Text style={styles.footerText}>{APP_INFO.COPYRIGHT}</Text>
+        {/* Security Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Security</Text>
+          <Card variant="default" padding={0} style={styles.sectionCard}>
+            <View style={styles.settingItem}>
+              <View style={[styles.settingIconBox, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="shield" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>
+                  {biometricType ? `${biometricType} App Lock` : 'Biometric App Lock'}
+                </Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                  {biometricAvailable ? `Require ${biometricType || 'biometrics'} on launch` : 'Not available on device'}
+                </Text>
+              </View>
+              <Switch
+                value={biometricEnabled}
+                onValueChange={handleBiometricToggle}
+                disabled={!biometricAvailable}
+                trackColor={{ false: colors.border, true: '#C4B5FD' }}
+                thumbColor={biometricEnabled ? colors.primary : '#F4F3F4'}
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* Notifications Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Notifications</Text>
+          <Card variant="default" padding={0} style={styles.sectionCard}>
+            <View style={styles.settingItem}>
+              <View style={[styles.settingIconBox, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="bell" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Push Notifications</Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>
+                  Backend-driven real-time email alerts
+                </Text>
+              </View>
+              <Switch
+                value={notificationsEnabled}
+                onValueChange={handleNotificationToggle}
+                trackColor={{ false: colors.border, true: '#C4B5FD' }}
+                thumbColor={notificationsEnabled ? colors.primary : '#F4F3F4'}
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* About Section */}
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>About</Text>
+          <Card variant="default" padding={0} style={styles.sectionCard}>
+            <View style={[styles.settingItem, styles.settingBorder, { borderBottomColor: colors.border }]}>
+              <View style={[styles.settingIconBox, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="info" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Version</Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>{APP_INFO.VERSION}</Text>
+              </View>
+            </View>
+
+            <View style={styles.settingItem}>
+              <View style={[styles.settingIconBox, { backgroundColor: `${colors.primary}15` }]}>
+                <Feather name="lock" size={18} color={colors.primary} />
+              </View>
+              <View style={styles.settingContent}>
+                <Text style={[styles.settingLabel, { color: colors.textPrimary }]}>Security & Encryption</Text>
+                <Text style={[styles.settingDescription, { color: colors.textSecondary }]}>Argon2id + AES-256 GCM</Text>
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        <Text style={[styles.footerText, { color: colors.textTertiary }]}>{APP_INFO.COPYRIGHT}</Text>
       </ScrollView>
     </View>
   );
@@ -162,7 +180,6 @@ export default function SettingsScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   scrollContent: {
     paddingHorizontal: SPACING.xl,
@@ -171,7 +188,6 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
     marginBottom: SPACING.xxl,
   },
   section: {
@@ -179,7 +195,6 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...TYPOGRAPHY.captionBold,
-    color: COLORS.textSecondary,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: SPACING.sm,
@@ -187,6 +202,25 @@ const styles = StyleSheet.create({
   },
   sectionCard: {
     overflow: 'hidden',
+  },
+  themeOptionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: SPACING.sm,
+  },
+  themeOptionBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: SPACING.md,
+    borderRadius: 12,
+    borderWidth: 1,
+    gap: SPACING.xs,
+  },
+  themeOptionLabel: {
+    ...TYPOGRAPHY.bodySmallMedium,
+    fontWeight: '600',
   },
   settingItem: {
     flexDirection: 'row',
@@ -196,7 +230,6 @@ const styles = StyleSheet.create({
   },
   settingBorder: {
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
   },
   settingIconBox: {
     width: 38,
@@ -211,17 +244,14 @@ const styles = StyleSheet.create({
   },
   settingLabel: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
     fontWeight: '600',
   },
   settingDescription: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     marginTop: 2,
   },
   footerText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     textAlign: 'center',
     marginTop: SPACING.lg,
   },

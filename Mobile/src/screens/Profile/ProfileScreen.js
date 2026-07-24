@@ -1,21 +1,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, StatusBar, Alert } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import Avatar from '../../components/common/Avatar';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import useAuth from '../../hooks/useAuth';
 import useMail from '../../hooks/useMail';
+import { useTheme } from '../../context/ThemeContext';
 import storageService from '../../services/storageService';
-import { getDisplayName, formatStorageUsage, countUnread } from '../../utils/helpers';
+import { getDisplayName, countUnread } from '../../utils/helpers';
 import { APP_INFO } from '../../constants/constants';
 
 export default function ProfileScreen({ navigation }) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark } = useTheme();
   const { user, logout } = useAuth();
   const { emails } = useMail();
 
@@ -31,7 +32,7 @@ export default function ProfileScreen({ navigation }) {
       const data = await storageService.getStorageInfo();
       setStorageInfo(data);
     } catch {
-      // Silently fail — storage is not critical
+      // Silently fail
     } finally {
       setLoadingStorage(false);
     }
@@ -53,110 +54,82 @@ export default function ProfileScreen({ navigation }) {
   }, [logout]);
 
   const menuItems = [
-    { icon: 'settings', label: 'Settings', color: COLORS.textSecondary, screen: 'SettingsTab' },
+    { icon: 'settings', label: 'Settings', color: colors.textSecondary, screen: 'SettingsTab' },
   ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={COLORS.background} />
-
+    <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Header */}
-        <Text style={styles.screenTitle}>Profile</Text>
+        <Text style={[styles.screenTitle, { color: colors.textPrimary }]}>Profile</Text>
 
-        {/* Profile Card */}
-        <Card variant="elevated" style={styles.profileCard}>
+        {/* User Card */}
+        <Card variant="default" style={styles.profileCard}>
           <View style={styles.profileHeader}>
-            <Avatar email={user?.email} size={72} />
-            <Text style={styles.displayName}>{displayName}</Text>
-            <Text style={styles.email}>{user?.email}</Text>
+            <Avatar email={user?.email || ''} initials={user?.email ? user.email.substring(0, 2).toUpperCase() : 'AM'} size={72} />
+            <Text style={[styles.displayName, { color: colors.textPrimary }]}>{displayName}</Text>
+            <Text style={[styles.email, { color: colors.textSecondary }]}>{user?.email || 'user@securemail.com'}</Text>
           </View>
 
-          {/* Stats Row */}
-          <View style={styles.statsRow}>
+          <View style={[styles.statsRow, { borderTopColor: colors.border }]}>
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{totalEmails}</Text>
-              <Text style={styles.statLabel}>Total Emails</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{totalEmails}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Messages</Text>
             </View>
-            <View style={styles.statDivider} />
+            <View style={[styles.statDivider, { backgroundColor: colors.border }]} />
             <View style={styles.stat}>
-              <Text style={styles.statValue}>{unreadCount}</Text>
-              <Text style={styles.statLabel}>Unread</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.stat}>
-              <Text style={styles.statValue}>
-                {emails.filter((e) => e.locked).length}
-              </Text>
-              <Text style={styles.statLabel}>Encrypted</Text>
+              <Text style={[styles.statValue, { color: colors.primary }]}>{unreadCount}</Text>
+              <Text style={[styles.statLabel, { color: colors.textSecondary }]}>Unread</Text>
             </View>
           </View>
         </Card>
 
-        {/* Storage Card */}
-        <Card variant="default" padding={SPACING.lg} style={styles.storageCard}>
+        {/* Storage Usage */}
+        <Card variant="default" style={styles.storageCard}>
           <View style={styles.storageHeader}>
-            <View style={styles.storageIconBox}>
-              <Feather name="hard-drive" size={18} color={COLORS.primary} />
+            <View style={[styles.storageIconBox, { backgroundColor: isDark ? '#312E81' : '#EDE9FE' }]}>
+              <Feather name="database" size={20} color={colors.primary} />
             </View>
-            <View style={styles.storageText}>
-              <Text style={styles.storageTitle}>Storage</Text>
-              {storageInfo ? (
-                <Text style={styles.storageUsage}>
-                  {formatStorageUsage(storageInfo.gb_used, storageInfo.quota_gb)} of {storageInfo.quota_gb} GB used
-                </Text>
-              ) : (
-                <Text style={styles.storageUsage}>Loading...</Text>
-              )}
+            <View style={styles.storageTitleBox}>
+              <Text style={[styles.storageTitle, { color: colors.textPrimary }]}>Vault Storage</Text>
+              <Text style={[styles.storageSubtitle, { color: colors.textSecondary }]}>
+                {storageInfo ? `${storageInfo.gb_used || 0} GB of ${storageInfo.quota_gb || 15} GB used` : '15 GB Storage'}
+              </Text>
             </View>
           </View>
-          {storageInfo && (
-            <View style={styles.progressBarContainer}>
-              <View style={styles.progressBarBg}>
-                <LinearGradient
-                  colors={COLORS.gradient.primary}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[
-                    styles.progressBarFill,
-                    { width: `${Math.min(storageInfo.percent_used, 100)}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.progressText}>{storageInfo.percent_used}%</Text>
-            </View>
-          )}
+
+          <View style={[styles.progressBarBg, { backgroundColor: colors.border }]}>
+            <View
+              style={[
+                styles.progressBarFill,
+                {
+                  width: `${Math.min(storageInfo?.percent_used || 5, 100)}%`,
+                  backgroundColor: colors.primary,
+                },
+              ]}
+            />
+          </View>
         </Card>
 
-        {/* Menu Items */}
-        <View style={styles.menuSection}>
+        {/* Settings Menu */}
+        <View style={[styles.menuList, { backgroundColor: colors.card, borderColor: colors.border }]}>
           {menuItems.map((item, index) => (
             <TouchableOpacity
               key={index}
-              style={styles.menuItem}
-              onPress={() => navigation.navigate(item.screen)}
+              style={[styles.menuItem, index < menuItems.length - 1 && { borderBottomWidth: 1, borderBottomColor: colors.border }]}
+              onPress={() => item.screen && navigation.navigate(item.screen)}
               activeOpacity={0.7}
             >
-              <View style={[styles.menuIconBox, { backgroundColor: `${item.color}15` }]}>
-                <Feather name={item.icon} size={20} color={item.color} />
-              </View>
-              <Text style={styles.menuLabel}>{item.label}</Text>
-              <View style={styles.menuRight}>
-                {item.badge > 0 && (
-                  <View style={styles.menuBadge}>
-                    <Text style={styles.menuBadgeText}>{item.badge}</Text>
-                  </View>
-                )}
-                <Feather name="chevron-right" size={18} color={COLORS.textTertiary} />
-              </View>
+              <Feather name={item.icon} size={20} color={colors.primary} />
+              <Text style={[styles.menuLabel, { color: colors.textPrimary }]}>{item.label}</Text>
+              <Feather name="chevron-right" size={18} color={colors.textTertiary} />
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Logout */}
+        {/* Logout Button */}
         <Button
           title="Sign Out"
           onPress={handleLogout}
@@ -167,8 +140,8 @@ export default function ProfileScreen({ navigation }) {
         />
 
         {/* Footer */}
-        <Text style={styles.versionText}>{APP_INFO.NAME} v{APP_INFO.VERSION}</Text>
-        <Text style={styles.copyrightText}>{APP_INFO.COPYRIGHT}</Text>
+        <Text style={[styles.versionText, { color: colors.textTertiary }]}>{APP_INFO.NAME} v{APP_INFO.VERSION}</Text>
+        <Text style={[styles.copyrightText, { color: colors.textTertiary }]}>{APP_INFO.COPYRIGHT}</Text>
       </ScrollView>
     </View>
   );
@@ -177,7 +150,6 @@ export default function ProfileScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.background,
   },
   scrollContent: {
     paddingHorizontal: SPACING.xl,
@@ -186,7 +158,6 @@ const styles = StyleSheet.create({
   },
   screenTitle: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
     marginBottom: SPACING.xxl,
   },
   profileCard: {
@@ -200,12 +171,10 @@ const styles = StyleSheet.create({
   },
   displayName: {
     ...TYPOGRAPHY.h4,
-    color: COLORS.textPrimary,
     marginTop: SPACING.md,
   },
   email: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
     marginTop: SPACING.xs,
   },
   statsRow: {
@@ -215,7 +184,6 @@ const styles = StyleSheet.create({
     width: '100%',
     paddingTop: SPACING.lg,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
   },
   stat: {
     alignItems: 'center',
@@ -223,17 +191,14 @@ const styles = StyleSheet.create({
   },
   statValue: {
     ...TYPOGRAPHY.h4,
-    color: COLORS.primary,
   },
   statLabel: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     marginTop: 2,
   },
   statDivider: {
     width: 1,
     height: 30,
-    backgroundColor: COLORS.borderLight,
   },
   storageCard: {
     marginBottom: SPACING.xxl,
@@ -247,105 +212,57 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: '#EDE9FE',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  storageText: {
-    flex: 1,
+  storageTitleBox: {
     marginLeft: SPACING.md,
   },
   storageTitle: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
     fontWeight: '600',
   },
-  storageUsage: {
+  storageSubtitle: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     marginTop: 2,
   },
-  progressBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   progressBarBg: {
-    flex: 1,
     height: 8,
     borderRadius: 4,
-    backgroundColor: COLORS.borderLight,
     overflow: 'hidden',
   },
   progressBarFill: {
     height: '100%',
     borderRadius: 4,
   },
-  progressText: {
-    ...TYPOGRAPHY.captionBold,
-    color: COLORS.textSecondary,
-    marginLeft: SPACING.sm,
-    minWidth: 36,
-    textAlign: 'right',
-  },
-  menuSection: {
-    backgroundColor: COLORS.card,
-    borderRadius: BORDER_RADIUS.xl,
-    overflow: 'hidden',
+  menuList: {
+    borderRadius: BORDER_RADIUS.lg,
+    borderWidth: 1,
     marginBottom: SPACING.xxl,
-    ...SHADOWS.sm,
+    overflow: 'hidden',
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: SPACING.lg,
     paddingHorizontal: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  menuIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   menuLabel: {
-    ...TYPOGRAPHY.bodyMedium,
-    color: COLORS.textPrimary,
+    ...TYPOGRAPHY.bodySmallMedium,
     flex: 1,
     marginLeft: SPACING.md,
-  },
-  menuRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  menuBadge: {
-    backgroundColor: COLORS.danger,
-    borderRadius: 10,
-    minWidth: 22,
-    height: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-    marginRight: SPACING.sm,
-  },
-  menuBadgeText: {
-    ...TYPOGRAPHY.captionBold,
-    color: COLORS.textInverse,
-    fontSize: 11,
+    fontWeight: '600',
   },
   logoutButton: {
-    marginBottom: SPACING.xxl,
+    marginBottom: SPACING.xl,
   },
   versionText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     textAlign: 'center',
-    marginBottom: 4,
   },
   copyrightText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textTertiary,
     textAlign: 'center',
+    marginTop: 4,
   },
 });

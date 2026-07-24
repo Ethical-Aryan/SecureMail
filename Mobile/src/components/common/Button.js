@@ -1,8 +1,8 @@
 import React, { memo } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const Button = memo(({
   title,
@@ -17,6 +17,7 @@ const Button = memo(({
   style,
   textStyle,
 }) => {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
 
   const sizeStyles = {
@@ -40,23 +41,23 @@ const Button = memo(({
         <View
           style={[
             styles.base,
-            { backgroundColor: isDisabled ? '#A5A3B5' : COLORS.primary },
+            { backgroundColor: isDisabled ? '#A5A3B5' : colors.primary },
             { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal },
             SHADOWS.colored,
           ]}
         >
           {loading ? (
-            <ActivityIndicator color={COLORS.textInverse} size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           ) : (
             <View style={styles.content}>
               {icon && iconPosition === 'left' && (
-                <Feather name={icon} size={currentSize.fontSize} color={COLORS.textInverse} style={styles.iconLeft} />
+                <Feather name={icon} size={currentSize.fontSize} color="#FFFFFF" style={styles.iconLeft} />
               )}
-              <Text style={[styles.primaryText, TYPOGRAPHY.button, { fontSize: currentSize.fontSize }, textStyle]}>
+              <Text style={[styles.primaryText, TYPOGRAPHY.button, { fontSize: currentSize.fontSize, color: '#FFFFFF' }, textStyle]}>
                 {title}
               </Text>
               {icon && iconPosition === 'right' && (
-                <Feather name={icon} size={currentSize.fontSize} color={COLORS.textInverse} style={styles.iconRight} />
+                <Feather name={icon} size={currentSize.fontSize} color="#FFFFFF" style={styles.iconRight} />
               )}
             </View>
           )}
@@ -67,19 +68,31 @@ const Button = memo(({
 
   const variantStyles = {
     outline: {
-      container: [styles.base, styles.outlineContainer, { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal }],
-      text: [styles.outlineText, { fontSize: currentSize.fontSize }],
-      iconColor: COLORS.primary,
+      container: [
+        styles.base,
+        { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: colors.primary },
+        { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal },
+      ],
+      text: [styles.outlineText, { fontSize: currentSize.fontSize, color: colors.primary }],
+      iconColor: colors.primary,
     },
     ghost: {
-      container: [styles.base, styles.ghostContainer, { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal }],
-      text: [styles.ghostText, { fontSize: currentSize.fontSize }],
-      iconColor: COLORS.primary,
+      container: [
+        styles.base,
+        { backgroundColor: 'transparent' },
+        { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal },
+      ],
+      text: [styles.ghostText, { fontSize: currentSize.fontSize, color: colors.primary }],
+      iconColor: colors.primary,
     },
     danger: {
-      container: [styles.base, styles.dangerContainer, { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal }],
-      text: [styles.dangerText, { fontSize: currentSize.fontSize }],
-      iconColor: COLORS.danger,
+      container: [
+        styles.base,
+        { backgroundColor: colors.dangerLight, borderWidth: 1, borderColor: colors.danger },
+        { paddingVertical: currentSize.paddingVertical, paddingHorizontal: currentSize.paddingHorizontal },
+      ],
+      text: [styles.dangerText, { fontSize: currentSize.fontSize, color: colors.danger }],
+      iconColor: colors.danger,
     },
   };
 
@@ -130,32 +143,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryText: {
-    color: COLORS.textInverse,
     fontWeight: '600',
-  },
-  outlineContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1.5,
-    borderColor: COLORS.primary,
   },
   outlineText: {
-    color: COLORS.primary,
     fontWeight: '600',
-  },
-  ghostContainer: {
-    backgroundColor: 'transparent',
   },
   ghostText: {
-    color: COLORS.primary,
     fontWeight: '600',
   },
-  dangerContainer: {
-    backgroundColor: COLORS.dangerLight,
-    borderWidth: 1,
-    borderColor: COLORS.danger,
-  },
   dangerText: {
-    color: COLORS.danger,
     fontWeight: '600',
   },
   disabledContainer: {

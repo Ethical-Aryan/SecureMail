@@ -1,6 +1,7 @@
 import React, { memo } from 'react';
 import { View, StyleSheet, Platform } from 'react-native';
-import { COLORS, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const Card = memo(({
   children,
@@ -9,11 +10,20 @@ const Card = memo(({
   borderRadius = BORDER_RADIUS.xl,
   style,
 }) => {
+  const { colors, isDark } = useTheme();
+
   const variantStyles = {
-    default: [styles.base, SHADOWS.sm],
-    elevated: [styles.base, SHADOWS.lg],
-    outlined: [styles.base, styles.outlined],
-    glass: [styles.base, styles.glass],
+    default: [styles.base, { backgroundColor: colors.card }, SHADOWS.sm],
+    elevated: [styles.base, { backgroundColor: colors.card }, SHADOWS.lg],
+    outlined: [styles.base, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }],
+    glass: [
+      styles.base,
+      {
+        backgroundColor: isDark ? 'rgba(30, 41, 59, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+        borderWidth: 1,
+        borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(255, 255, 255, 0.3)',
+      },
+    ],
   };
 
   return (
@@ -33,22 +43,7 @@ Card.displayName = 'Card';
 
 const styles = StyleSheet.create({
   base: {
-    backgroundColor: COLORS.card,
     borderRadius: BORDER_RADIUS.xl,
-  },
-  outlined: {
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  glass: {
-    backgroundColor: 'rgba(255, 255, 255, 0.85)',
-    ...Platform.select({
-      ios: {
-        backdropFilter: 'blur(10px)',
-      },
-    }),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
 });
 

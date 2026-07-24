@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-export const COLORS = {
+export const LIGHT_COLORS = {
   primary: '#6B4EFF',
   primaryDark: '#5A3DE8',
   primaryLight: '#8B6FFF',
@@ -55,6 +55,64 @@ export const COLORS = {
     '#14B8A6', '#F97316', '#8B5CF6', '#06B6D4',
   ],
 };
+
+export const DARK_COLORS = {
+  primary: '#8B6FFF',
+  primaryDark: '#6B4EFF',
+  primaryLight: '#A78BFA',
+  secondary: '#A78BFA',
+  secondaryLight: '#C4B5FD',
+
+  background: '#0F172A', // Dark Slate
+  backgroundDark: '#020617',
+  surface: '#1E293B',
+  surfaceDark: '#0F172A',
+  card: '#1E293B',
+  cardDark: '#0F172A',
+
+  success: '#10B981',
+  successLight: '#064E3B',
+  warning: '#F59E0B',
+  warningLight: '#78350F',
+  danger: '#EF4444',
+  dangerLight: '#7F1D1D',
+  info: '#3B82F6',
+  infoLight: '#1E3A8A',
+
+  border: '#334155',
+  borderLight: '#1E293B',
+  borderDark: '#475569',
+
+  textPrimary: '#F8FAFC',
+  textSecondary: '#94A3B8',
+  textTertiary: '#64748B',
+  textInverse: '#0F172A',
+  textLink: '#A78BFA',
+
+  inputBg: '#1E293B',
+  inputBorder: '#334155',
+  inputFocusBorder: '#8B6FFF',
+
+  overlay: 'rgba(0, 0, 0, 0.75)',
+  shimmer: '#1E293B',
+  shimmerHighlight: '#334155',
+
+  gradient: {
+    primary: ['#8B6FFF', '#6B4EFF'],
+    primaryReverse: ['#6B4EFF', '#8B6FFF'],
+    splash: ['#0F172A', '#1E293B', '#334155'],
+    onboarding: ['#0F172A', '#1E293B'],
+    card: ['#1E293B', '#0F172A'],
+  },
+
+  avatarColors: [
+    '#8B6FFF', '#A78BFA', '#F472B6', '#F87171',
+    '#FBBF24', '#34D399', '#60A5FA', '#818CF8',
+    '#2DD4BF', '#FB923C', '#A78BFA', '#22D3EE',
+  ],
+};
+
+export const COLORS = LIGHT_COLORS;
 
 export const TYPOGRAPHY = {
   fontFamily: 'Inter_400Regular',

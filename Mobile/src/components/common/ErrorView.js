@@ -1,7 +1,8 @@
 import React, { memo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY, SPACING } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const ErrorView = memo(({
   title = 'Something went wrong',
@@ -11,21 +12,23 @@ const ErrorView = memo(({
   retryText = 'Try Again',
   style,
 }) => {
+  const { colors, isDark } = useTheme();
+
   return (
     <View style={[styles.container, style]}>
-      <View style={styles.iconContainer}>
-        <Feather name={icon} size={48} color={COLORS.textTertiary} />
+      <View style={[styles.iconContainer, { backgroundColor: colors.border }]}>
+        <Feather name={icon} size={48} color={colors.textTertiary} />
       </View>
-      <Text style={styles.title}>{title}</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.title, { color: colors.textPrimary }]}>{title}</Text>
+      <Text style={[styles.message, { color: colors.textSecondary }]}>{message}</Text>
       {onRetry && (
         <TouchableOpacity
           onPress={onRetry}
-          style={styles.retryButton}
+          style={[styles.retryButton, { backgroundColor: isDark ? '#312E81' : '#EDE9FE' }]}
           activeOpacity={0.7}
         >
-          <Feather name="refresh-cw" size={16} color={COLORS.primary} />
-          <Text style={styles.retryText}>{retryText}</Text>
+          <Feather name="refresh-cw" size={16} color={colors.primary} />
+          <Text style={[styles.retryText, { color: colors.primary }]}>{retryText}</Text>
         </TouchableOpacity>
       )}
     </View>
@@ -45,20 +48,17 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.borderLight,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: SPACING.xl,
   },
   title: {
     ...TYPOGRAPHY.h5,
-    color: COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: SPACING.sm,
   },
   message: {
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: SPACING.xxl,
@@ -69,11 +69,9 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.xxl,
     borderRadius: 12,
-    backgroundColor: '#EDE9FE',
   },
   retryText: {
     ...TYPOGRAPHY.buttonSmall,
-    color: COLORS.primary,
     marginLeft: SPACING.sm,
   },
 });

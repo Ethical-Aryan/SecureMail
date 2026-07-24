@@ -1,7 +1,8 @@
 import React, { memo, useState, useCallback } from 'react';
 import { View, TextInput, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { COLORS, TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const Input = memo(({
   label,
@@ -31,6 +32,7 @@ const Input = memo(({
   blurOnSubmit,
   inputRef,
 }) => {
+  const { colors, isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
   const [isSecureVisible, setIsSecureVisible] = useState(false);
 
@@ -49,22 +51,22 @@ const Input = memo(({
   }, []);
 
   const borderColor = error
-    ? COLORS.danger
+    ? colors.danger
     : isFocused
-    ? COLORS.inputFocusBorder
-    : COLORS.inputBorder;
+    ? colors.inputFocusBorder
+    : colors.inputBorder;
 
   const wrapperStyle = variant === 'underlined' 
     ? [styles.underlinedWrapper, { borderBottomColor: borderColor }, isFocused && styles.underlinedFocused]
-    : [styles.inputWrapper, { borderColor }, isFocused && styles.focusedWrapper];
+    : [styles.inputWrapper, { backgroundColor: colors.inputBg, borderColor }, isFocused && styles.focusedWrapper];
 
   return (
     <View style={[styles.container, containerStyle]}>
-      {label && <Text style={styles.label}>{label}</Text>}
+      {label && <Text style={[styles.label, { color: colors.textPrimary }]}>{label}</Text>}
       <View
         style={[
           ...wrapperStyle,
-          error && styles.errorWrapper,
+          error && { borderColor: colors.danger, backgroundColor: isDark ? '#3A1D1D' : '#FFF5F5' },
           multiline && styles.multilineWrapper,
           style,
         ]}
@@ -73,7 +75,7 @@ const Input = memo(({
           <Feather
             name={icon}
             size={17}
-            color={isFocused ? COLORS.primary : COLORS.textTertiary}
+            color={isFocused ? colors.primary : colors.textTertiary}
             style={styles.leftIcon}
           />
         )}
@@ -81,14 +83,15 @@ const Input = memo(({
           ref={inputRef}
           style={[
             styles.input,
+            { color: colors.textPrimary },
             multiline && styles.multilineInput,
-            !editable && styles.disabledInput,
+            !editable && { color: colors.textTertiary },
             inputStyle,
           ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
-          placeholderTextColor={COLORS.textTertiary}
+          placeholderTextColor={colors.textTertiary}
           secureTextEntry={secureTextEntry && !isSecureVisible}
           multiline={multiline}
           numberOfLines={numberOfLines}
@@ -114,7 +117,7 @@ const Input = memo(({
             <Feather
               name={isSecureVisible ? 'eye-off' : 'eye'}
               size={17}
-              color={COLORS.textTertiary}
+              color={colors.textTertiary}
             />
           </TouchableOpacity>
         )}
@@ -123,14 +126,14 @@ const Input = memo(({
             onPress={onRightIconPress}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Feather name={rightIcon} size={17} color={COLORS.textTertiary} />
+            <Feather name={rightIcon} size={17} color={colors.textTertiary} />
           </TouchableOpacity>
         )}
       </View>
       {error && (
         <View style={styles.errorRow}>
-          <Feather name="alert-circle" size={12} color={COLORS.danger} />
-          <Text style={styles.errorText}>{error}</Text>
+          <Feather name="alert-circle" size={12} color={colors.danger} />
+          <Text style={[styles.errorText, { color: colors.danger }]}>{error}</Text>
         </View>
       )}
     </View>
@@ -145,14 +148,12 @@ const styles = StyleSheet.create({
   },
   label: {
     ...TYPOGRAPHY.bodySmallMedium,
-    color: COLORS.textPrimary,
     marginBottom: SPACING.xs + 2,
     fontWeight: '600',
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.inputBg,
     borderRadius: BORDER_RADIUS.md,
     borderWidth: 1,
     paddingHorizontal: SPACING.md,
@@ -171,10 +172,6 @@ const styles = StyleSheet.create({
   underlinedFocused: {
     borderBottomWidth: 2,
   },
-  errorWrapper: {
-    borderColor: COLORS.danger,
-    backgroundColor: '#FFF5F5',
-  },
   multilineWrapper: {
     alignItems: 'flex-start',
     minHeight: 120,
@@ -186,14 +183,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingVertical: 13,
     ...TYPOGRAPHY.bodySmall,
-    color: COLORS.textPrimary,
   },
   multilineInput: {
     paddingTop: 13,
     minHeight: 100,
-  },
-  disabledInput: {
-    color: COLORS.textTertiary,
   },
   errorRow: {
     flexDirection: 'row',
@@ -202,7 +195,6 @@ const styles = StyleSheet.create({
   },
   errorText: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.danger,
     marginLeft: SPACING.xs,
   },
 });

@@ -1,8 +1,9 @@
 import React, { memo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { COLORS, TYPOGRAPHY, SPACING, SHADOWS } from '../../theme/theme';
+import { TYPOGRAPHY, SPACING, SHADOWS } from '../../theme/theme';
+import { useTheme } from '../../context/ThemeContext';
 
 const Header = memo(({
   title,
@@ -14,11 +15,12 @@ const Header = memo(({
   style,
 }) => {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   return (
     <View style={[
       styles.container,
-      !transparent && styles.solidBg,
+      !transparent && { backgroundColor: colors.background },
       !transparent && SHADOWS.sm,
       { paddingTop: insets.top + SPACING.sm },
       style,
@@ -27,20 +29,20 @@ const Header = memo(({
         {onBack && (
           <TouchableOpacity
             onPress={onBack}
-            style={styles.backButton}
+            style={[styles.backButton, { backgroundColor: colors.card }]}
             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
             accessibilityRole="button"
             accessibilityLabel="Go back"
           >
-            <Feather name="arrow-left" size={22} color={COLORS.textPrimary} />
+            <Feather name="arrow-left" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
         )}
 
         {!large && (
           <View style={[styles.titleContainer, !onBack && styles.titleNoBack]}>
-            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]} numberOfLines={1}>{title}</Text>
             {subtitle && (
-              <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>
+              <Text style={[styles.subtitle, { color: colors.textSecondary }]} numberOfLines={1}>{subtitle}</Text>
             )}
           </View>
         )}
@@ -50,14 +52,14 @@ const Header = memo(({
             <TouchableOpacity
               key={index}
               onPress={action.onPress}
-              style={styles.actionButton}
+              style={[styles.actionButton, { backgroundColor: colors.card }]}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               accessibilityRole="button"
             >
-              <Feather name={action.icon} size={22} color={COLORS.textPrimary} />
+              <Feather name={action.icon} size={22} color={colors.textPrimary} />
               {action.badge > 0 && (
-                <View style={styles.badge}>
-                  <Text style={styles.badgeText}>
+                <View style={[styles.badge, { backgroundColor: colors.danger }]}>
+                  <Text style={[styles.badgeText, { color: '#FFFFFF' }]}>
                     {action.badge > 99 ? '99+' : action.badge}
                   </Text>
                 </View>
@@ -69,9 +71,9 @@ const Header = memo(({
 
       {large && (
         <View style={styles.largeTitle}>
-          <Text style={styles.largeTitleText}>{title}</Text>
+          <Text style={[styles.largeTitleText, { color: colors.textPrimary }]}>{title}</Text>
           {subtitle && (
-            <Text style={styles.subtitle}>{subtitle}</Text>
+            <Text style={[styles.subtitle, { color: colors.textSecondary }]}>{subtitle}</Text>
           )}
         </View>
       )}
@@ -86,9 +88,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.xl,
     paddingBottom: SPACING.md,
   },
-  solidBg: {
-    backgroundColor: COLORS.background,
-  },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -98,7 +97,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.md,
@@ -120,11 +118,9 @@ const styles = StyleSheet.create({
   },
   title: {
     ...TYPOGRAPHY.h5,
-    color: COLORS.textPrimary,
   },
   subtitle: {
     ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
     marginTop: 2,
   },
   rightContainer: {
@@ -135,7 +131,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: COLORS.card,
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: SPACING.sm,
@@ -153,7 +148,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: COLORS.danger,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -163,7 +157,6 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     ...TYPOGRAPHY.overline,
-    color: COLORS.textInverse,
     fontSize: 9,
     letterSpacing: 0,
   },
@@ -173,7 +166,6 @@ const styles = StyleSheet.create({
   },
   largeTitleText: {
     ...TYPOGRAPHY.h2,
-    color: COLORS.textPrimary,
   },
 });
 
