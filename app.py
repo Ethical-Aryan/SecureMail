@@ -73,12 +73,12 @@ def get_connection():
                 database=MYSQL_DATABASE,
                 ssl_disabled=False,
                 ssl_verify_cert=False,
-                connection_timeout=10
+                connection_timeout=5
             )
-
         except Exception as e:
-            print(f"❌ MySQL connection failed: {e}")
-            raise Exception(f"Database connection failed: {e}")
+            print(f"[ERROR] MySQL connection failed: {e}")
+            print("[INFO] Falling back to SQLite for local operations...")
+            DB_TYPE = "sqlite"
 
     conn = sqlite3.connect(SQLITE_PATH)
     conn.row_factory = sqlite3.Row

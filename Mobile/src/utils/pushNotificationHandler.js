@@ -1,26 +1,60 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import notificationService from '../services/notificationService';
 import secureStorage from './secureStorage';
 
-// Configure default notification handler
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+/**
+ * Push Notification Handler
+ *
+ * Uses expo-notifications when available. Falls back gracefully
+ * if the package is not installed, so the app continues to work
+ * without push notification hardware support.
+ */
+
+let Notifications = null;
+
+function getNotificationsModule() {
+  if (Notifications !== null) return Notifications;
+  try {
+    Notifications = require('expo-notifications');
+    return Notifications;
+  } catch {
+    console.log('[PushNotification] expo-notifications is not installed. Push notifications are disabled.');
+    Notifications = false;
+    return false;
+  }
+}
+
+// Configure default notification handler (runs at import time only if module exists)
+try {
+  const mod = getNotificationsModule();
+  if (mod) {
+    mod.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+      }),
+    });
+  }
+} catch {
+  // Silently ignore — module not available
+}
 
 export async function registerForPushNotificationsAsync() {
+  const mod = getNotificationsModule();
+  if (!mod) {
+    console.log('[PushNotification] Skipping registration — expo-notifications not available.');
+    return null;
+  }
+
   let token = null;
 
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    const { status: existingStatus } = await mod.getPermissionsAsync();
     let finalStatus = existingStatus;
 
     if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
+      const { status } = await mod.requestPermissionsAsync();
       finalStatus = status;
     }
 
@@ -29,13 +63,13 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
 
-    const pushTokenData = await Notifications.getExpoPushTokenAsync();
+    const pushTokenData = await mod.getExpoPushTokenAsync();
     token = pushTokenData.data;
 
     if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
+      await mod.setNotificationChannelAsync('default', {
         name: 'default',
-        importance: Notifications.AndroidImportance.MAX,
+        importance: mod.AndroidImportance.MAX,
         vibrationPattern: [0, 250, 250, 250],
         lightColor: '#6B4EFF',
       });
@@ -65,13 +99,19 @@ export async function unregisterPushNotificationsAsync() {
 }
 
 export function setupNotificationListeners(onNotificationReceived, onNotificationResponse) {
-  const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
+  const mod = getNotificationsModule();
+  if (!mod) {
+    // Return a no-op cleanup function
+    return () => {};
+  }
+
+  const notificationListener = mod.addNotificationReceivedListener((notification) => {
     if (onNotificationReceived) {
       onNotificationReceived(notification);
     }
   });
 
-  const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+  const responseListener = mod.addNotificationResponseReceivedListener((response) => {
     if (onNotificationResponse) {
       const data = response.notification.request.content.data;
       onNotificationResponse(data);
@@ -79,7 +119,7 @@ export function setupNotificationListeners(onNotificationReceived, onNotificatio
   });
 
   return () => {
-    Notifications.removeNotificationSubscription(notificationListener);
-    Notifications.removeNotificationSubscription(responseListener);
+    mod.removeNotificationSubscription(notificationListener);
+    mod.removeNotificationSubscription(responseListener);
   };
 }

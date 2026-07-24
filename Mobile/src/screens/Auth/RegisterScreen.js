@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   successContainer: {
-    justify.content: 'center',
+    justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: SPACING.xxxl,
   },
