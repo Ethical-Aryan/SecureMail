@@ -439,6 +439,21 @@ def logout():
     return jsonify({"success": True, "message": "Successfully logged out"}), 200
 
 # ------------------------------------------------------------------
+# Helper Utilities
+# ------------------------------------------------------------------
+
+def to_bool(val):
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return val != 0
+    if isinstance(val, str):
+        return val.strip().lower() in ("true", "1", "yes", "t")
+    return bool(val)
+
+# ------------------------------------------------------------------
 # Emails APIs
 # ------------------------------------------------------------------
 
@@ -472,7 +487,7 @@ def get_emails():
         if e["created_at"]:
             time_str = str(e["created_at"])[:19]
         
-        is_enc = bool(e["is_encrypted"])
+        is_enc = to_bool(e["is_encrypted"])
         email_body = e["body"].split('\n') if e["body"] else []
         if is_enc:
             email_body = ["🔑 [Secure Encrypted Payload - Decryption Required]"]
@@ -499,12 +514,12 @@ def get_emails():
             "senderEmail": e["sender_email"],
             "initials": initials,
             "subject": e["subject"],
-            "preview": "🔑 Encrypted Message" if is_enc else e["body"][:100],
+            "preview": "🔑 Encrypted Message" if is_enc else (e["body"][:100] if e["body"] else ""),
             "body": email_body,
             "time": time_str,
             "locked": is_enc,
-            "unread": bool(not e["is_read"]),
-            "starred": bool(e["is_starred"]),
+            "unread": not to_bool(e["is_read"]),
+            "starred": to_bool(e["is_starred"]),
             "folder": display_folder,
             "attachment": attachment_info
         })
@@ -530,13 +545,13 @@ def compose_email():
     sender_email = sender_email.lower()
     subject = data.get("subject", "").strip()
     body = data.get("body", "").strip()
-    is_encrypted = data.get("is_encrypted", False)
+    is_encrypted = to_bool(data.get("is_encrypted", False))
     passkey = data.get("passkey", "").strip()
     attachment_name = data.get("attachment_name")
     attachment_size = data.get("attachment_size")
 
-    if not recipient_email or not subject or not body:
-        return jsonify({"error": "Recipient, subject, and body are required"}), 400
+    if not recipient_email or not subject:
+        return jsonify({"error": "Recipient email and subject are required"}), 400
 
     db_body = body
     db_passkey = None
