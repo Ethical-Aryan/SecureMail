@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE_URL, TIMEOUTS, ERROR_MESSAGES } from '../constants/constants';
+import { API_BASE_URL, API_ENDPOINTS, TIMEOUTS, ERROR_MESSAGES } from '../constants/constants';
 import secureStorage from '../utils/secureStorage';
 
 // ==============================================================

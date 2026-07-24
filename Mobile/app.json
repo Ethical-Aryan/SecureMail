@@ -28,7 +28,9 @@
       "package": "com.securemail.app",
       "permissions": [
         "USE_BIOMETRIC",
-        "USE_FINGERPRINT"
+        "USE_FINGERPRINT",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
     "web": {
@@ -42,7 +44,14 @@
           "faceIDPermission": "Allow SecureMail to use Face ID for secure authentication"
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6B4EFF"
+        }
+      ]
     ]
   }
 }

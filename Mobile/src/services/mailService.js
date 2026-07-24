@@ -99,6 +99,28 @@ const mailService = {
   async moveToTrash(emailId) {
     return this.updateEmail(emailId, { folder: 'trash' });
   },
+
+  /**
+   * POST /api/upload
+   * Auth: JWT Required
+   * Body: FormData { file }
+   * Returns: { message, attachment_name, attachment_size, size_bytes }
+   */
+  async uploadAttachment(fileUri, fileName, mimeType) {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: fileUri,
+      name: fileName || 'attachment',
+      type: mimeType || 'application/octet-stream',
+    });
+
+    const response = await api.post(API_ENDPOINTS.EMAILS.UPLOAD, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
 };
 
 export default mailService;

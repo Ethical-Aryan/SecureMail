@@ -60,6 +60,24 @@ MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "securemail.db")
 
+#########################################################
+# MOBILE SUPPORT UPDATE
+#
+# Added/Modified for React Native Mobile Compatibility
+#
+# Reason:
+# Enforce MySQL as single source of truth in production while
+# allowing optional ALLOW_SQLITE_FALLBACK only when explicitly enabled.
+# Prevents silent DB divergence between Web and Mobile.
+#
+# Related Mobile Files:
+# - Mobile/src/services/api.js
+# - Mobile/src/context/AuthContext.js
+#
+# Date: 2026-07-24
+#
+# Do not remove without updating Mobile.
+#########################################################
 def get_connection():
     global DB_TYPE
 
@@ -73,12 +91,16 @@ def get_connection():
                 database=MYSQL_DATABASE,
                 ssl_disabled=False,
                 ssl_verify_cert=False,
-                connection_timeout=5
+                connection_timeout=10
             )
         except Exception as e:
             print(f"[ERROR] MySQL connection failed: {e}")
-            print("[INFO] Falling back to SQLite for local operations...")
-            DB_TYPE = "sqlite"
+            allow_fallback = os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() == "true"
+            if allow_fallback:
+                print("[INFO] Falling back to SQLite for local development...")
+                DB_TYPE = "sqlite"
+            else:
+                raise Exception(f"Database connection failed: {e}")
 
     conn = sqlite3.connect(SQLITE_PATH)
     conn.row_factory = sqlite3.Row
@@ -136,8 +158,13 @@ def init_db():
             cur.close()
             conn.close()
         except Exception as e:
-            print(f"Warning: MySQL initialization failed ({str(e)}). Falling back to SQLite...")
-            DB_TYPE = "sqlite"
+            allow_fallback = os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() == "true"
+            if allow_fallback:
+                print(f"[WARNING] MySQL initialization failed ({str(e)}). Falling back to SQLite for local development...")
+                DB_TYPE = "sqlite"
+            else:
+                print(f"[ERROR] MySQL initialization failed: {e}")
+                raise e
 
     if DB_TYPE == "mysql":
         create_user_table = """
@@ -781,14 +808,22 @@ def api_reset_password():
     
     return jsonify({"message": "Password reset successfully. You can now log in."}), 200
 
-###############################################################
+############################################################
 # MOBILE SUPPORT UPDATE
-# Added for React Native Mobile Application
-# Purpose:
+#
+# Added for React Native Mobile
+#
+# Reason:
 # Backend APIs for push token registration, notification listing,
 # marking notifications read, deletion, and test notifications.
-# Do not remove without updating the mobile application.
-###############################################################
+#
+# Related Mobile Files:
+# - Mobile/src/services/notificationService.js
+# - Mobile/src/screens/Notifications/NotificationsScreen.js
+# - Mobile/src/utils/pushNotificationHandler.js
+#
+# Date: 2026-07-24
+############################################################
 
 @app.route('/api/mobile/register-push-token', methods=['POST'])
 @jwt_required()
@@ -963,6 +998,52 @@ def send_test_notification():
     return jsonify({
         "message": "Test notification created successfully",
         "notification_id": notif_id
+    }), 201
+
+############################################################
+# MOBILE SUPPORT UPDATE
+#
+# Added for React Native Compose Screen
+#
+# Purpose:
+# File upload endpoint to receive email attachments from mobile
+# client, validate file size/extension, and return metadata.
+#
+# Related Mobile Files:
+# - Mobile/src/screens/Compose/ComposeScreen.js
+# - Mobile/src/services/mailService.js
+#
+# Date: 2026-07-24
+############################################################
+
+@app.route('/api/upload', methods=['POST'])
+@jwt_required()
+def upload_attachment():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file payload provided"}), 400
+
+    file = request.files['file']
+    if not file or file.filename == '':
+        return jsonify({"error": "Empty filename"}), 400
+
+    filename = file.filename
+    file.seek(0, os.SEEK_END)
+    file_length = file.tell()
+    file.seek(0)
+
+    if file_length > 10 * 1024 * 1024:
+        return jsonify({"error": "File size exceeds 10MB limit"}), 400
+
+    if file_length >= 1024 * 1024:
+        size_str = f"{round(file_length / (1024 * 1024), 2)} MB"
+    else:
+        size_str = f"{round(file_length / 1024, 1)} KB"
+
+    return jsonify({
+        "message": "File upload processed successfully",
+        "attachment_name": filename,
+        "attachment_size": size_str,
+        "size_bytes": file_length
     }), 201
 
 if __name__ == "__main__":

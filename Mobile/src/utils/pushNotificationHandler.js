@@ -2,33 +2,11 @@ import { Platform } from 'react-native';
 import notificationService from '../services/notificationService';
 import secureStorage from './secureStorage';
 
-/**
- * Push Notification Handler
- *
- * Uses expo-notifications when available. Falls back gracefully
- * if the package is not installed, so the app continues to work
- * without push notification hardware support.
- */
-
 let Notifications = null;
-
-function getNotificationsModule() {
-  if (Notifications !== null) return Notifications;
-  try {
-    Notifications = require('expo-notifications');
-    return Notifications;
-  } catch {
-    console.log('[PushNotification] expo-notifications is not installed. Push notifications are disabled.');
-    Notifications = false;
-    return false;
-  }
-}
-
-// Configure default notification handler (runs at import time only if module exists)
 try {
-  const mod = getNotificationsModule();
-  if (mod) {
-    mod.setNotificationHandler({
+  Notifications = require('expo-notifications');
+  if (Notifications && Notifications.setNotificationHandler) {
+    Notifications.setNotificationHandler({
       handleNotification: async () => ({
         shouldShowAlert: true,
         shouldPlaySound: true,
@@ -37,42 +15,58 @@ try {
     });
   }
 } catch {
-  // Silently ignore — module not available
+  console.log('[PushNotification] expo-notifications package not loaded.');
 }
 
+/**
+ * Register device for Expo Push Notifications
+ */
 export async function registerForPushNotificationsAsync() {
-  const mod = getNotificationsModule();
-  if (!mod) {
-    console.log('[PushNotification] Skipping registration — expo-notifications not available.');
+  if (!Notifications) {
+    console.log('[PushNotification] Skipping registration — expo-notifications module unavailable.');
     return null;
   }
 
   let token = null;
 
   try {
-    const { status: existingStatus } = await mod.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    let finalStatus = 'denied';
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      finalStatus = existingStatus;
 
-    if (existingStatus !== 'granted') {
-      const { status } = await mod.requestPermissionsAsync();
-      finalStatus = status;
-    }
-
-    if (finalStatus !== 'granted') {
-      console.log('Push notification permission denied');
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        finalStatus = status;
+      }
+    } catch (permError) {
+      console.log('[PushNotification] Push permissions check skipped (Expo Go SDK 53+ limitation):', permError.message);
       return null;
     }
 
-    const pushTokenData = await mod.getExpoPushTokenAsync();
-    token = pushTokenData.data;
+    if (finalStatus !== 'granted') {
+      console.log('[PushNotification] Permission denied.');
+      return null;
+    }
 
     if (Platform.OS === 'android') {
-      await mod.setNotificationChannelAsync('default', {
-        name: 'default',
-        importance: mod.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#6B4EFF',
-      });
+      try {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'default',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#6B4EFF',
+        });
+      } catch (channelError) {
+        console.log('[PushNotification] Android notification channel creation skipped:', channelError.message);
+      }
+    }
+
+    try {
+      const pushTokenData = await Notifications.getExpoPushTokenAsync();
+      token = pushTokenData.data;
+    } catch (tokenError) {
+      console.log('[PushNotification] Expo Push Token skipped (Expo Go SDK 53+ limitation or missing EAS project ID):', tokenError.message);
     }
 
     if (token) {
@@ -80,12 +74,15 @@ export async function registerForPushNotificationsAsync() {
       await notificationService.registerPushToken(token, Platform.OS);
     }
   } catch (error) {
-    console.warn('Error registering for push notifications:', error);
+    console.warn('[PushNotification] Registration error:', error);
   }
 
   return token;
 }
 
+/**
+ * Unregister device push token
+ */
 export async function unregisterPushNotificationsAsync() {
   try {
     const token = await secureStorage.getPushToken();
@@ -94,32 +91,40 @@ export async function unregisterPushNotificationsAsync() {
       await secureStorage.clearPushToken();
     }
   } catch (error) {
-    console.warn('Error unregistering push notifications:', error);
+    console.warn('[PushNotification] Unregistration error:', error);
   }
 }
 
+/**
+ * Setup notification event listeners
+ */
 export function setupNotificationListeners(onNotificationReceived, onNotificationResponse) {
-  const mod = getNotificationsModule();
-  if (!mod) {
-    // Return a no-op cleanup function
+  if (!Notifications || !Notifications.addNotificationReceivedListener) {
     return () => {};
   }
 
-  const notificationListener = mod.addNotificationReceivedListener((notification) => {
-    if (onNotificationReceived) {
-      onNotificationReceived(notification);
-    }
-  });
+  try {
+    const notificationListener = Notifications.addNotificationReceivedListener((notification) => {
+      if (onNotificationReceived) {
+        onNotificationReceived(notification);
+      }
+    });
 
-  const responseListener = mod.addNotificationResponseReceivedListener((response) => {
-    if (onNotificationResponse) {
-      const data = response.notification.request.content.data;
-      onNotificationResponse(data);
-    }
-  });
+    const responseListener = Notifications.addNotificationResponseReceivedListener((response) => {
+      if (onNotificationResponse) {
+        const data = response.notification.request.content.data;
+        onNotificationResponse(data);
+      }
+    });
 
-  return () => {
-    mod.removeNotificationSubscription(notificationListener);
-    mod.removeNotificationSubscription(responseListener);
-  };
+    return () => {
+      if (Notifications && Notifications.removeNotificationSubscription) {
+        Notifications.removeNotificationSubscription(notificationListener);
+        Notifications.removeNotificationSubscription(responseListener);
+      }
+    };
+  } catch (listenerError) {
+    console.log('[PushNotification] Notification listeners setup skipped:', listenerError.message);
+    return () => {};
+  }
 }

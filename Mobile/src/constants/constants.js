@@ -6,8 +6,8 @@
 // Uses Expo environment variable for the backend URL.
 // Set EXPO_PUBLIC_API_URL in Mobile/.env
 // Fallback to production Render deployment.
-export const API_BASE_URL =
-  process.env.EXPO_PUBLIC_API_URL || 'https://securemail-km5i.onrender.com';
+const rawBaseUrl = process.env.EXPO_PUBLIC_API_URL || 'https://securemail-km5i.onrender.com';
+export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, '');
 
 // API Endpoints (mapped from Flask backend)
 export const API_ENDPOINTS = {
@@ -25,6 +25,7 @@ export const API_ENDPOINTS = {
     UPDATE: (id) => `/api/emails/${id}`,
     DELETE: (id) => `/api/emails/${id}`,
     DECRYPT: (id) => `/api/emails/${id}/decrypt`,
+    UPLOAD: '/api/upload',
   },
   STORAGE: {
     INFO: '/api/storage',
@@ -187,9 +188,9 @@ export const APP_INFO = {
 
 // Request Timeouts (ms)
 export const TIMEOUTS = {
-  DEFAULT: 15000,
+  DEFAULT: 30000,
   UPLOAD: 60000,
-  AUTH: 15000,
+  AUTH: 30000,
 };
 
 // Pagination
