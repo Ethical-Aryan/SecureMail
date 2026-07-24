@@ -429,7 +429,11 @@ def get_emails():
     if not user_email:
         return jsonify({"error": "User identity not found"}), 404
 
-    emails = query_db("SELECT * FROM emails WHERE owner_email = %s ORDER BY created_at DESC", (user_email,))
+    user_email_lower = user_email.lower()
+    emails = query_db(
+        "SELECT * FROM emails WHERE LOWER(recipient_email) = %s OR LOWER(sender_email) = %s ORDER BY created_at DESC", 
+        (user_email_lower, user_email_lower)
+    )
     
     res = []
     for e in emails:
@@ -453,9 +457,17 @@ def get_emails():
                 "size": e["attachment_size"]
             }
 
+        # Dynamically determine folder: if requesting user is the sender (and not self-mail), show under 'sent'
+        sender_lower = e["sender_email"].lower()
+        recipient_lower = e["recipient_email"].lower()
+        if sender_lower == user_email_lower and recipient_lower != user_email_lower:
+            display_folder = "sent"
+        else:
+            display_folder = e["folder"] or "inbox"
+
         res.append({
             "id": e["id"],
-            "owner_email": e["owner_email"],
+            "owner_email": user_email,
             "sender": e["sender_email"].split('@')[0].replace('.', ' ').title(),
             "senderEmail": e["sender_email"],
             "initials": initials,
@@ -466,7 +478,7 @@ def get_emails():
             "locked": is_enc,
             "unread": bool(not e["is_read"]),
             "starred": bool(e["is_starred"]),
-            "folder": e["folder"],
+            "folder": display_folder,
             "attachment": attachment_info
         })
     
@@ -487,7 +499,8 @@ def compose_email():
         return jsonify({"error": "User identity not found"}), 404
 
     data = request.get_json() or {}
-    recipient_email = data.get("recipient_email", "").strip()
+    recipient_email = data.get("recipient_email", "").strip().lower()
+    sender_email = sender_email.lower()
     subject = data.get("subject", "").strip()
     body = data.get("body", "").strip()
     is_encrypted = data.get("is_encrypted", False)
@@ -512,21 +525,13 @@ def compose_email():
         except Exception as e:
             return jsonify({"error": f"Encryption failed: {str(e)}"}), 500
 
-    recipient_row_id = execute_db(
+    # Single-Row Storage: Insert only ONE row into database
+    email_row_id = execute_db(
         """INSERT INTO emails 
         (owner_email, sender_email, recipient_email, subject, body, passkey, is_encrypted, is_read, is_starred, folder, attachment_name, attachment_size) 
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
         (recipient_email, sender_email, recipient_email, subject, db_body, db_passkey, 1 if is_encrypted else 0, 0, 0, 'inbox', attachment_name, attachment_size)
     )
-
-    sender_row_id = recipient_row_id
-    if recipient_email != sender_email:
-        sender_row_id = execute_db(
-            """INSERT INTO emails 
-            (owner_email, sender_email, recipient_email, subject, body, passkey, is_encrypted, is_read, is_starred, folder, attachment_name, attachment_size) 
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-            (sender_email, sender_email, recipient_email, subject, db_body, db_passkey, 1 if is_encrypted else 0, 1, 0, 'sent', attachment_name, attachment_size)
-        )
 
 ###############################################################
 # MOBILE SUPPORT UPDATE
@@ -540,7 +545,7 @@ def compose_email():
     notif_title = f"New Email from {sender_email.split('@')[0].title()}"
     notif_body = f"🔒 Encrypted message: {subject}" if is_encrypted else subject
     notif_type = "encrypted_email" if is_encrypted else "new_email"
-    notif_data = json.dumps({"email_id": recipient_row_id, "sender_email": sender_email, "type": notif_type})
+    notif_data = json.dumps({"email_id": email_row_id, "sender_email": sender_email, "type": notif_type})
     
     execute_db(
         """INSERT INTO notifications (user_email, title, body, type, data_json, is_read)
@@ -551,8 +556,9 @@ def compose_email():
     return jsonify({
         "message": "Secure transmission complete",
         "recipient_email": recipient_email,
-        "recipient_row_id": recipient_row_id,
-        "sender_row_id": sender_row_id
+        "recipient_row_id": email_row_id,
+        "sender_row_id": email_row_id,
+        "email_id": email_row_id
     }), 201
 
 @app.route('/api/emails/<int:email_id>', methods=['PUT'])
@@ -569,7 +575,9 @@ def update_email(email_id):
     email = query_db("SELECT * FROM emails WHERE id = %s", (email_id,), one=True)
     if not email:
         return jsonify({"error": "Email not found"}), 404
-    if email["owner_email"] != user_email:
+    
+    u_lower = user_email.lower()
+    if u_lower not in (email["sender_email"].lower(), email["recipient_email"].lower(), (email["owner_email"] or "").lower()):
         return jsonify({"error": "Unauthorized"}), 403
 
     data = request.get_json() or {}
@@ -609,7 +617,9 @@ def delete_email(email_id):
     email = query_db("SELECT * FROM emails WHERE id = %s", (email_id,), one=True)
     if not email:
         return jsonify({"error": "Email not found"}), 404
-    if email["owner_email"] != user_email:
+    
+    u_lower = user_email.lower()
+    if u_lower not in (email["sender_email"].lower(), email["recipient_email"].lower(), (email["owner_email"] or "").lower()):
         return jsonify({"error": "Unauthorized"}), 403
 
     execute_db("DELETE FROM emails WHERE id = %s", (email_id,))
@@ -629,7 +639,8 @@ def get_storage():
     if not user_email:
         return jsonify({"error": "User identity not found"}), 404
 
-    emails = query_db("SELECT body, attachment_size FROM emails WHERE owner_email = %s", (user_email,))
+    u_lower = user_email.lower()
+    emails = query_db("SELECT body, attachment_size FROM emails WHERE LOWER(recipient_email) = %s OR LOWER(sender_email) = %s", (u_lower, u_lower))
     
     total_bytes = 0
     for e in emails:
@@ -671,7 +682,9 @@ def decrypt_email(email_id):
     email = query_db("SELECT * FROM emails WHERE id = %s", (email_id,), one=True)
     if not email:
         return jsonify({"error": "Email not found"}), 404
-    if email["owner_email"] != user_email:
+    
+    u_lower = user_email.lower()
+    if u_lower not in (email["sender_email"].lower(), email["recipient_email"].lower(), (email["owner_email"] or "").lower()):
         return jsonify({"error": "Unauthorized"}), 403
 
     data = request.get_json() or {}
