@@ -1,6 +1,6 @@
 # 🔒 SecureMail
 
-SecureMail is a secure, end-to-end encrypted email client system designed for enterprise-grade digital communication. It features a modern, responsive user interface with security-first mechanics like robust **Argon2** password hashing, **JWT-based** session authentication, and database portability supporting both **SQLite** and **MySQL**.
+SecureMail is a secure, end-to-end encrypted email client system designed for enterprise-grade digital communication. It features a modern, responsive user interface with security-first mechanics like robust **Argon2** password hashing, **JWT-based** session authentication, and persistent **MySQL** database storage.
 
 👉 **Live Demo:** [https://securemail-km5i.onrender.com/](https://securemail-km5i.onrender.com/)
 
@@ -11,8 +11,8 @@ SecureMail is a secure, end-to-end encrypted email client system designed for en
 *   **Web Frontend:** HTML5, Vanilla CSS (custom design with sleek dark gradient UI and glassmorphism components), Vanilla JavaScript.
 *   **Backend Server:** Python, [Flask](https://flask.palletsprojects.com/) (RESTful API), [Flask-JWT-Extended](https://flask-jwt-extended.readthedocs.io/), [Flask-CORS](https://flask-cors.cgit.io/).
 *   **Security & Hashing:** [Argon2-cffi](https://argon2-cffi.readthedocs.io/) (high-performance secure password hashing), JWT (JSON Web Tokens with Refresh Tokens).
-*   **Databases:** [MySQL](https://www.mysql.com/) (Production-ready via `mysql-connector-python`) and [SQLite](https://www.sqlite.org/) (Zero-config local fallback).
-*   **Mobile Application:** [React Native](https://reactnative.dev/) (Planned Roadmap).
+*   **Database:** [MySQL](https://www.mysql.com/) (Production database single source of truth via `mysql-connector-python` connection pool).
+*   **Mobile Application:** [React Native](https://reactnative.dev/) (Dedicated mobile client).
 
 ---
 
@@ -20,27 +20,26 @@ SecureMail is a secure, end-to-end encrypted email client system designed for en
 
 1.  **Secure Authentication System:** Register and log in using an encrypted digital identity.
 2.  **Master Password Strength Meter:** Real-time client-side password entropy check evaluating length, uppercase letters, numbers, and special characters.
-3.  **JWT Vault Sessions:** Stateless JWT token storage in `localStorage` with automated expiration validation and session termination.
-4.  **Database Portability:** Configurable environment variable switcher enabling automatic fallback to local SQLite database when MySQL is unavailable.
+3.  **JWT Vault Sessions:** Stateless JWT token storage with automated expiration validation and session termination.
+4.  **Single Source of Truth MySQL Architecture:** Persistent, highly available MySQL database serving both Web and Mobile clients through Flask REST APIs.
 5.  **Clean & Responsive Dark UI:** An eye-catching glassmorphism interface featuring smooth micro-animations, customizable visibility toggles for sensitive passwords, and loading spinner states.
 
 ---
 
 ## 📁 Repository Structure
 
-Below is the layout of the repository as it currently stands, followed by the planned modular directory structure.
+Below is the layout of the repository as it currently stands.
 
 ### Current Layout
 ```text
 SecureMail/
-├── app.py                # Flask main backend entry point & REST API handlers
+├── app.py                # Flask main backend entry point, MySQL connection pool & REST API handlers
 ├── crypto_vault.py       # AES-256-GCM encryption & PBKDF2 key derivation functions
 ├── test_crypto.py        # Unit tests for the cryptographic functions
 ├── requirements.txt      # Python dependencies list
 ├── .env                  # Environment configuration settings (ignored by Git)
-├── securemail.db         # SQLite local database (generated automatically)
-├── structure.txt         # Roadmap specification for modular expansion
-├── git.txt               # Git command cheat sheet and developer workflow logs
+├── scripts/
+│   └── migrate_sqlite_to_mysql.py # One-time SQLite to MySQL data migration utility
 ├── Mobile/               # React Native mobile application codebase
 └── web/                  # Web frontend files served by Flask
     ├── templates/        # HTML templates for rendering views
@@ -57,21 +56,13 @@ SecureMail/
             └── dashboard.js# JavaScript handler for viewing, composing, and decrypting emails
 ```
 
-
-### Planned Roadmap Structure (from `structure.txt`)
-To support scaling and a dedicated React Native mobile app, the repository is designed to split into:
-*   **`backend/`**: Modular MVC pattern (`controllers`, `models`, `routes`, `services`, `middleware`, `schemas`).
-*   **`web/`**: Full React Web App configured via Vite.
-*   **`mobile/`**: React Native mobile app sharing the identical REST API backend.
-*   **`docs/`**: Complete set of PRD, SRS, API docs, UML and ER diagrams.
-
 ---
 
 ## 🛠️ Environment Configuration
 
-Configuration is managed via the environment variables in the `.env` file:
+Configuration is managed via environment variables in the `.env` file:
 
-| Variable | Description | Default / Example |
+| Variable | Description | Example |
 | :--- | :--- | :--- |
 | `FLASK_APP` | Entry file for Flask | `app.py` |
 | `FLASK_ENV` | Running environment mode | `development` |
@@ -79,12 +70,11 @@ Configuration is managed via the environment variables in the `.env` file:
 | `SECRET_KEY` | Key used for encrypting Flask session data | *Change in production* |
 | `JWT_SECRET_KEY` | Key used to sign JWT Access/Refresh tokens | *Change in production* |
 | `JWT_ACCESS_TOKEN_EXPIRES_MINUTES` | Minutes until a JWT token expires | `60` |
-| `DB_TYPE` | Primary database type to connect to (`mysql` or `sqlite`) | `sqlite` |
-| `SQLITE_PATH` | Path to SQLite database file | `securemail.db` |
-| `MYSQL_HOST` | MySQL hostname / server address | `localhost` |
-| `MYSQL_USER` | MySQL database user | `root` |
-| `MYSQL_PASSWORD` | MySQL password for the specified user | *Empty by default* |
-| `MYSQL_DATABASE` | Target schema database name | `securemail` |
+| `MYSQL_HOST` | MySQL hostname / server address | `securemail-db.aivencloud.com` |
+| `MYSQL_PORT` | MySQL server port | `15109` |
+| `MYSQL_USER` | MySQL database user | `avnadmin` |
+| `MYSQL_PASSWORD` | MySQL password for the specified user | *Set in .env* |
+| `MYSQL_DATABASE` | Target schema database name | `defaultdb` |
 
 ---
 
@@ -94,7 +84,7 @@ Follow these steps to set up and run SecureMail locally.
 
 ### Prerequisites
 *   Python 3.8 or higher installed on your system.
-*   (Optional) A local MySQL server running (e.g., via XAMPP, WampServer, Docker, or native installer) if `DB_TYPE=mysql` is desired.
+*   A MySQL database instance (e.g., Aiven MySQL, local XAMPP/WampServer, Docker, or native installer).
 
 ### Installation
 1.  **Clone the Repository:**
@@ -120,28 +110,20 @@ Follow these steps to set up and run SecureMail locally.
     ```
 
 4.  **Configure Environment Variables:**
-    Create a file named `.env` in the root folder (or modify the existing one) with settings appropriate for your database choice.
+    Configure `.env` in the root directory with your MySQL credentials:
+    ```env
+    MYSQL_HOST=localhost
+    MYSQL_PORT=3306
+    MYSQL_USER=root
+    MYSQL_PASSWORD=yourpassword
+    MYSQL_DATABASE=securemail
+    ```
 
----
+5.  **Launch Backend Server:**
+    ```bash
+    python app.py
+    ```
 
-### Database Setup
-
-#### Option A: Local SQLite (Easiest / Standard Dev)
-Set `DB_TYPE=sqlite` in your `.env`. The SQLite database (`securemail.db`) will be automatically created in the repository root directory on the first server launch. No additional configurations or database setups are required.
-
-#### Option B: MySQL Setup (Production / Scaled)
-1. Make sure your MySQL database server is running.
-2. Update the environment variables in `.env` to match your local credentials:
-   ```env
-   DB_TYPE=mysql
-   MYSQL_HOST=localhost
-   MYSQL_USER=root
-   MYSQL_PASSWORD=yourpassword
-   MYSQL_DATABASE=securemail
-   ```
-3. Run the Flask application. It will automatically check for the presence of the `securemail` database, create it if missing, and initialize the `users` table structures.
-
----
 
 ### Running the Server
 Execute the application runner using Python:

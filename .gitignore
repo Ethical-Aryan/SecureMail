@@ -35,6 +35,10 @@ yarn-error.*
 .env.*
 !.env.example
 
+# sqlite databases
+securemail.db
+*.db
+
 # typescript
 *.tsbuildinfo
 

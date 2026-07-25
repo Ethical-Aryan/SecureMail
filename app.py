@@ -4,8 +4,8 @@ import re
 import redis
 import random
 from datetime import timedelta
-import sqlite3
 import mysql.connector
+from mysql.connector import pooling
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager, create_access_token, create_refresh_token, jwt_required, get_jwt_identity, get_jwt
@@ -63,272 +63,202 @@ def check_if_token_is_revoked(jwt_header, jwt_payload: dict):
             return False
     return False
 
-# Database Switcher (reads directly from environment variables)
+# MYSQL MIGRATION: Permanent single source of truth database architecture
 load_dotenv(override=True)
 
-DB_TYPE = os.getenv("DB_TYPE", "mysql").lower()
-MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
-MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
-MYSQL_USER = os.getenv("MYSQL_USER", "root")
+MYSQL_HOST = os.getenv("MYSQL_HOST")
+MYSQL_PORT_RAW = os.getenv("MYSQL_PORT", "15109")
+try:
+    MYSQL_PORT = int(MYSQL_PORT_RAW)
+except ValueError:
+    MYSQL_PORT = 15109
+MYSQL_USER = os.getenv("MYSQL_USER")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
-MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "securemail")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
+MYSQL_SSL_CA = os.getenv("MYSQL_SSL_CA", None)
 
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SQLITE_PATH = os.path.join(BASE_DIR, "securemail.db")
+def validate_db_config():
+    required_vars = {
+        "MYSQL_HOST": MYSQL_HOST,
+        "MYSQL_USER": MYSQL_USER,
+        "MYSQL_DATABASE": MYSQL_DATABASE
+    }
+    missing = [k for k, v in required_vars.items() if not v or str(v).strip() == ""]
+    if missing:
+        err = f"[ERROR] Database configuration invalid: Missing required environment variables ({', '.join(missing)})."
+        print(err)
+        raise RuntimeError(err)
+    print(f"[DB] MySQL environment variables validated successfully.")
 
-#########################################################
-# MOBILE SUPPORT UPDATE
-#
-# Added/Modified for React Native Mobile Compatibility
-#
-# Reason:
-# Enforce MySQL as single source of truth in production while
-# allowing optional ALLOW_SQLITE_FALLBACK only when explicitly enabled.
-# Prevents silent DB divergence between Web and Mobile.
-#
-# Related Mobile Files:
-# - Mobile/src/services/api.js
-# - Mobile/src/context/AuthContext.js
-#
-# Date: 2026-07-24
-#
-# Do not remove without updating Mobile.
-#########################################################
-def get_connection():
-    global DB_TYPE
+validate_db_config()
 
-    if DB_TYPE == "mysql":
-        try:
-            is_local = (MYSQL_HOST.lower() in ("localhost", "127.0.0.1"))
-            return mysql.connector.connect(
-                host=MYSQL_HOST,
-                port=MYSQL_PORT,
-                user=MYSQL_USER,
-                password=MYSQL_PASSWORD,
-                database=MYSQL_DATABASE,
-                ssl_disabled=is_local,
-                ssl_verify_cert=False,
-                connection_timeout=5
-            )
-        except Exception as e:
-            print(f"[WARNING] MySQL connection failed ({e}). Switching DB_TYPE to SQLite for instant local responses...")
-            DB_TYPE = "sqlite"
+db_pool = None
 
-    conn = sqlite3.connect(SQLITE_PATH, timeout=5)
-    conn.row_factory = sqlite3.Row
+def init_db_pool():
+    global db_pool
+    if db_pool is not None:
+        return db_pool
+
+    is_local = (MYSQL_HOST.lower() in ("localhost", "127.0.0.1"))
+    connect_args = {
+        "pool_name": "securemail_pool",
+        "pool_size": int(os.getenv("MYSQL_POOL_SIZE", "5")),
+        "pool_reset_session": True,
+        "host": MYSQL_HOST,
+        "port": MYSQL_PORT,
+        "user": MYSQL_USER,
+        "password": MYSQL_PASSWORD,
+        "database": MYSQL_DATABASE,
+        "ssl_disabled": is_local,
+        "connection_timeout": 5
+    }
+    if not is_local:
+        if MYSQL_SSL_CA and os.path.exists(MYSQL_SSL_CA):
+            connect_args["ssl_ca"] = MYSQL_SSL_CA
+            connect_args["ssl_verify_cert"] = True
+        else:
+            connect_args["ssl_verify_cert"] = False
+
     try:
-        conn.execute("PRAGMA journal_mode=WAL;")
-        conn.execute("PRAGMA synchronous=NORMAL;")
-    except Exception:
-        pass
-    return conn
+        print("[DB] Connecting to configured MySQL database...")
+        db_pool = pooling.MySQLConnectionPool(**connect_args)
+        print(f"[SUCCESS] Initialized MySQL Connection Pool successfully.")
+        return db_pool
+    except Exception as e:
+        print(f"[ERROR] Failed to initialize MySQL Connection Pool: {e}")
+        raise e
 
+def get_connection():
+    pool = init_db_pool()
+    return pool.get_connection()
 
 def execute_db(query, args=()):
-    is_mysql = (DB_TYPE == "mysql")
-    if not is_mysql:
-        query = query.replace("%s", "?")
     conn = get_connection()
     cur = conn.cursor()
     try:
         cur.execute(query, args)
         conn.commit()
         return cur.lastrowid
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] Database execution failed: {e}")
+        raise e
     finally:
         cur.close()
         conn.close()
 
 def query_db(query, args=(), one=False):
-    is_mysql = (DB_TYPE == "mysql")
-    if not is_mysql:
-        query = query.replace("%s", "?")
     conn = get_connection()
-    cur = conn.cursor()
+    cur = conn.cursor(dictionary=True)
     try:
         cur.execute(query, args)
         rv = cur.fetchall()
-        if is_mysql:
-            columns = [col[0] for col in cur.description] if cur.description else []
-            rv = [dict(zip(columns, row)) for row in rv]
-        else:
-            rv = [dict(row) for row in rv]
         conn.commit()
         return (rv[0] if rv else None) if one else rv
+    except Exception as e:
+        conn.rollback()
+        print(f"[ERROR] Database query failed: {e}")
+        raise e
     finally:
         cur.close()
         conn.close()
 
 def init_db():
-    global DB_TYPE
-    if DB_TYPE == "mysql":
-        try:
-            is_local = (MYSQL_HOST.lower() in ("localhost", "127.0.0.1"))
-            conn = mysql.connector.connect(
-                host=MYSQL_HOST,
-                port=MYSQL_PORT,
-                user=MYSQL_USER,
-                password=MYSQL_PASSWORD,
-                ssl_disabled=is_local,
-                ssl_verify_cert=False,
-                ssl_verify_cert=True,
-                connection_timeout=5)
-            cur = conn.cursor()
-            cur.execute(f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DATABASE}`")
-            cur.close()
-            conn.close()
-        except Exception as e:
-            allow_fallback = os.getenv("ALLOW_SQLITE_FALLBACK", "false").lower() == "true"
-            if allow_fallback:
-                print(f"[WARNING] MySQL initialization failed ({str(e)}). Falling back to SQLite for local development...")
-                DB_TYPE = "sqlite"
-            else:
-                print(f"[ERROR] MySQL initialization failed: {e}")
-                raise e
+    is_local = (MYSQL_HOST.lower() in ("localhost", "127.0.0.1"))
+    connect_args = {
+        "host": MYSQL_HOST,
+        "port": MYSQL_PORT,
+        "user": MYSQL_USER,
+        "password": MYSQL_PASSWORD,
+        "ssl_disabled": is_local,
+        "connection_timeout": 5
+    }
+    if not is_local:
+        if MYSQL_SSL_CA and os.path.exists(MYSQL_SSL_CA):
+            connect_args["ssl_ca"] = MYSQL_SSL_CA
+            connect_args["ssl_verify_cert"] = True
+        else:
+            connect_args["ssl_verify_cert"] = False
 
-    if DB_TYPE == "mysql":
-        create_user_table = """
-        CREATE TABLE IF NOT EXISTS users (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            email VARCHAR(255) UNIQUE NOT NULL,
-            password_hash VARCHAR(255) NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-        create_emails_table = """
-        CREATE TABLE IF NOT EXISTS emails (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            owner_email VARCHAR(255) NOT NULL,
-            sender_email VARCHAR(255) NOT NULL,
-            recipient_email VARCHAR(255) NOT NULL,
-            subject VARCHAR(255) NOT NULL,
-            body TEXT NOT NULL,
-            passkey VARCHAR(255) NULL,
-            is_encrypted BOOLEAN DEFAULT FALSE,
-            is_read BOOLEAN DEFAULT FALSE,
-            is_starred BOOLEAN DEFAULT FALSE,
-            folder VARCHAR(50) DEFAULT 'inbox',
-            attachment_name VARCHAR(255) NULL,
-            attachment_size VARCHAR(50) NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-    else:
-        create_user_table = """
-        CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            email TEXT UNIQUE NOT NULL,
-            password_hash TEXT NOT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-        create_emails_table = """
-        CREATE TABLE IF NOT EXISTS emails (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            owner_email TEXT NOT NULL,
-            sender_email TEXT NOT NULL,
-            recipient_email TEXT NOT NULL,
-            subject TEXT NOT NULL,
-            body TEXT NOT NULL,
-            passkey TEXT NULL,
-            is_encrypted INTEGER DEFAULT 0,
-            is_read INTEGER DEFAULT 0,
-            is_starred INTEGER DEFAULT 0,
-            folder TEXT DEFAULT 'inbox',
-            attachment_name TEXT NULL,
-            attachment_size TEXT NULL,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
+    try:
+        conn = mysql.connector.connect(**connect_args)
+        cur = conn.cursor()
+        cur.execute(f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DATABASE}`")
+        cur.close()
+        conn.close()
+    except Exception as e:
+        print(f"[ERROR] MySQL database creation check failed: {e}")
+        raise e
+
+    create_user_table = """
+    CREATE TABLE IF NOT EXISTS users (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        email VARCHAR(255) UNIQUE NOT NULL,
+        password_hash VARCHAR(255) NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    """
+    create_emails_table = """
+    CREATE TABLE IF NOT EXISTS emails (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        owner_email VARCHAR(255) NOT NULL,
+        sender_email VARCHAR(255) NOT NULL,
+        recipient_email VARCHAR(255) NOT NULL,
+        subject VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        passkey VARCHAR(255) NULL,
+        is_encrypted BOOLEAN DEFAULT FALSE,
+        is_read BOOLEAN DEFAULT FALSE,
+        is_starred BOOLEAN DEFAULT FALSE,
+        folder VARCHAR(50) DEFAULT 'inbox',
+        attachment_name VARCHAR(255) NULL,
+        attachment_size VARCHAR(50) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    """
+    create_devices_table = """
+    CREATE TABLE IF NOT EXISTS devices (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_email VARCHAR(255) NOT NULL,
+        push_token VARCHAR(255) NOT NULL,
+        platform VARCHAR(50) DEFAULT 'unknown',
+        is_active BOOLEAN DEFAULT TRUE,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY user_token (user_email, push_token)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    """
+    create_notifications_table = """
+    CREATE TABLE IF NOT EXISTS notifications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_email VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        type VARCHAR(50) DEFAULT 'info',
+        data_json TEXT NULL,
+        is_read BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    """
+    create_queue_table = """
+    CREATE TABLE IF NOT EXISTS notification_queue (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_email VARCHAR(255) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        body TEXT NOT NULL,
+        type VARCHAR(50) DEFAULT 'info',
+        data_json TEXT NULL,
+        status VARCHAR(50) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    """
     execute_db(create_user_table)
     execute_db(create_emails_table)
-
-###############################################################
-# MOBILE SUPPORT UPDATE
-# Added for React Native Mobile Application
-# Purpose:
-# Initialize database tables for Mobile Device Push Tokens,
-# Mobile Notifications, and Mobile Push Delivery Queue.
-# Do not remove without updating the mobile application.
-###############################################################
-    if DB_TYPE == "mysql":
-        create_devices_table = """
-        CREATE TABLE IF NOT EXISTS devices (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_email VARCHAR(255) NOT NULL,
-            push_token VARCHAR(255) NOT NULL,
-            platform VARCHAR(50) DEFAULT 'unknown',
-            is_active BOOLEAN DEFAULT TRUE,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY user_token (user_email, push_token)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-        create_notifications_table = """
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_email VARCHAR(255) NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            body TEXT NOT NULL,
-            type VARCHAR(50) DEFAULT 'info',
-            data_json TEXT NULL,
-            is_read BOOLEAN DEFAULT FALSE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-        create_queue_table = """
-        CREATE TABLE IF NOT EXISTS notification_queue (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            user_email VARCHAR(255) NOT NULL,
-            title VARCHAR(255) NOT NULL,
-            body TEXT NOT NULL,
-            type VARCHAR(50) DEFAULT 'info',
-            data_json TEXT NULL,
-            status VARCHAR(50) DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-        """
-    else:
-        create_devices_table = """
-        CREATE TABLE IF NOT EXISTS devices (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL,
-            push_token TEXT NOT NULL,
-            platform TEXT DEFAULT 'unknown',
-            is_active INTEGER DEFAULT 1,
-            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE(user_email, push_token)
-        );
-        """
-        create_notifications_table = """
-        CREATE TABLE IF NOT EXISTS notifications (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL,
-            title TEXT NOT NULL,
-            body TEXT NOT NULL,
-            type TEXT DEFAULT 'info',
-            data_json TEXT NULL,
-            is_read INTEGER DEFAULT 0,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
-        create_queue_table = """
-        CREATE TABLE IF NOT EXISTS notification_queue (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_email TEXT NOT NULL,
-            title TEXT NOT NULL,
-            body TEXT NOT NULL,
-            type TEXT DEFAULT 'info',
-            data_json TEXT NULL,
-            status TEXT DEFAULT 'pending',
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-        """
     execute_db(create_devices_table)
     execute_db(create_notifications_table)
     execute_db(create_queue_table)
 
-# Initialize database tables on startup
+# Initialize MySQL database tables on startup
 init_db()
 
 ph = PasswordHasher()
