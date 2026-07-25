@@ -18,8 +18,23 @@ from crypto_vault import verify_passkey, encrypt_body, decrypt_body, hash_passke
 load_dotenv()
 
 app = Flask(__name__, template_folder='web/templates', static_folder='web/static', static_url_path='/static')
-# Connect to Redis (Using protocol=2 for Windows compatibility)
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True, protocol=2)
+# Connect to Redis gracefully (supports REDIS_URL for production or fallback if offline)
+redis_url = os.getenv("REDIS_URL")
+redis_client = None
+if redis_url:
+    try:
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+    except Exception as e:
+        print(f"[WARNING] Could not connect to REDIS_URL: {e}")
+else:
+    try:
+        redis_host = os.getenv("REDIS_HOST", "localhost")
+        redis_port = int(os.getenv("REDIS_PORT", "6379"))
+        redis_client = redis.Redis(host=redis_host, port=redis_port, db=0, decode_responses=True, socket_connect_timeout=2)
+        redis_client.ping()
+    except Exception as e:
+        print(f"[WARNING] Local Redis offline: {e}")
+        redis_client = None
 
 # Configuration
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "super-secret-session-key-change-in-production")
@@ -91,8 +106,8 @@ def get_connection():
                 password=MYSQL_PASSWORD,
                 database=MYSQL_DATABASE,
                 ssl_disabled=is_local,
-                ssl_verify_cert=True,
-                connection_timeout=2
+                ssl_verify_cert=False,
+                connection_timeout=5
             )
         except Exception as e:
             print(f"[WARNING] MySQL connection failed ({e}). Switching DB_TYPE to SQLite for instant local responses...")
@@ -153,7 +168,7 @@ def init_db():
                 user=MYSQL_USER,
                 password=MYSQL_PASSWORD,
                 ssl_disabled=is_local,
-                ssl_verify_cert=not is_local,
+                ssl_verify_cert=False,
                 connection_timeout=5)
             cur = conn.cursor()
             cur.execute(f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DATABASE}`")
@@ -1066,5 +1081,9 @@ def upload_attachment():
         "size_bytes": file_length
     }), 201
 
+init_db()
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.getenv("PORT", "5000"))
+    debug_mode = os.getenv("FLASK_DEBUG", "0") == "1"
+    app.run(host="0.0.0.0", port=port, debug=debug_mode)
