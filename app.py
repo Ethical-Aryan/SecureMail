@@ -91,7 +91,7 @@ def get_connection():
                 password=MYSQL_PASSWORD,
                 database=MYSQL_DATABASE,
                 ssl_disabled=is_local,
-                ssl_verify_cert=not is_local,
+                ssl_verify_cert=True,
                 connection_timeout=2
             )
         except Exception as e:
