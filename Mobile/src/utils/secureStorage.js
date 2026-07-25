@@ -14,7 +14,7 @@ const secureStorage = {
       await SecureStore.setItemAsync(key, stringValue);
       return true;
     } catch (error) {
-      console.error(`SecureStore setItem error [${key}]:`, error.message);
+      if (__DEV__) console.error(`SecureStore setItem error [${key}]:`, error.message);
       return false;
     }
   },
@@ -24,7 +24,7 @@ const secureStorage = {
       const value = await SecureStore.getItemAsync(key);
       return value;
     } catch (error) {
-      console.error(`SecureStore getItem error [${key}]:`, error.message);
+      if (__DEV__) console.error(`SecureStore getItem error [${key}]:`, error.message);
       return null;
     }
   },
@@ -37,7 +37,7 @@ const secureStorage = {
       }
       return null;
     } catch (error) {
-      console.error(`SecureStore getJSON error [${key}]:`, error.message);
+      if (__DEV__) console.error(`SecureStore getJSON error [${key}]:`, error.message);
       return null;
     }
   },
@@ -47,7 +47,7 @@ const secureStorage = {
       await SecureStore.deleteItemAsync(key);
       return true;
     } catch (error) {
-      console.error(`SecureStore removeItem error [${key}]:`, error.message);
+      if (__DEV__) console.error(`SecureStore removeItem error [${key}]:`, error.message);
       return false;
     }
   },

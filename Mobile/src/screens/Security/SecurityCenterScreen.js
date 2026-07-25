@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
@@ -22,6 +21,17 @@ export default function SecurityCenterScreen({ navigation }) {
     [user, emails]
   );
 
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'active':
+        return 'Active';
+      case 'coming_soon':
+        return 'Coming Soon';
+      default:
+        return 'Available';
+    }
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.background, paddingTop: insets.top }]}>
       <Header title="Vault Security" />
@@ -30,59 +40,50 @@ export default function SecurityCenterScreen({ navigation }) {
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
-        {/* Score Card */}
-        <Card variant="elevated" style={styles.scoreCard}>
-          <LinearGradient
-            colors={colors.gradient.primary}
-            style={styles.scoreGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={styles.scoreValue}>{security.overallScore}</Text>
-            <Text style={styles.scoreLabel}>Security Score</Text>
-            <View style={styles.scoreBar}>
-              <View style={[styles.scoreBarFill, { width: `${security.overallScore}%` }]} />
-            </View>
-            <Text style={styles.scoreDescription}>
-              Your account is well-protected. Keep up the good work!
-            </Text>
-          </LinearGradient>
-        </Card>
+        {/* Security Features & Status */}
+        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Security Status</Text>
 
-        {/* Security Features */}
-        <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Security Features</Text>
+        {[security.encryption, security.biometric, security.twoFactor].map((feature, index) => {
+          const isActive = feature.status === 'active';
+          const isComingSoon = feature.status === 'coming_soon';
 
-        {[security.encryption, security.biometric, security.twoFactor].map((feature, index) => (
-          <Card key={index} variant="default" padding={SPACING.lg} style={styles.featureCard}>
-            <View style={styles.featureRow}>
-              <View style={[
-                styles.featureIcon,
-                { backgroundColor: feature.status === 'active' ? (isDark ? '#064E3B' : colors.successLight) : (isDark ? '#312E81' : '#EDE9FE') },
-              ]}>
-                <Feather
-                  name={feature.icon}
-                  size={20}
-                  color={feature.status === 'active' ? colors.success : colors.primary}
-                />
+          const iconBg = isActive
+            ? (isDark ? '#064E3B' : colors.successLight)
+            : (isDark ? '#312E81' : '#EDE9FE');
+          
+          const iconColor = isActive ? colors.success : colors.primary;
+
+          const badgeBg = isActive
+            ? (isDark ? '#064E3B' : colors.successLight)
+            : isComingSoon
+            ? (isDark ? '#312E81' : '#EDE9FE')
+            : (isDark ? '#78350F' : colors.warningLight);
+
+          const badgeTextColor = isActive
+            ? colors.success
+            : isComingSoon
+            ? colors.primary
+            : colors.warning;
+
+          return (
+            <Card key={index} variant="default" padding={SPACING.lg} style={styles.featureCard}>
+              <View style={styles.featureRow}>
+                <View style={[styles.featureIcon, { backgroundColor: iconBg }]}>
+                  <Feather name={feature.icon} size={20} color={iconColor} />
+                </View>
+                <View style={styles.featureContent}>
+                  <Text style={[styles.featureLabel, { color: colors.textPrimary }]}>{feature.label}</Text>
+                  <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{feature.description}</Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: badgeBg }]}>
+                  <Text style={[styles.statusText, { color: badgeTextColor }]}>
+                    {getStatusText(feature.status)}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.featureContent}>
-                <Text style={[styles.featureLabel, { color: colors.textPrimary }]}>{feature.label}</Text>
-                <Text style={[styles.featureDescription, { color: colors.textSecondary }]}>{feature.description}</Text>
-              </View>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: feature.status === 'active' ? (isDark ? '#064E3B' : colors.successLight) : (isDark ? '#78350F' : colors.warningLight) },
-              ]}>
-                <Text style={[
-                  styles.statusText,
-                  { color: feature.status === 'active' ? colors.success : colors.warning },
-                ]}>
-                  {feature.status === 'active' ? 'Active' : 'Available'}
-                </Text>
-              </View>
-            </View>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
 
         {/* Encryption Stats */}
         <Text style={[styles.sectionTitle, { color: colors.textSecondary }]}>Encryption Statistics</Text>
@@ -146,46 +147,6 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: SPACING.xl,
     paddingBottom: SPACING.xxxxl,
-  },
-  scoreCard: {
-    marginBottom: SPACING.xxl,
-    padding: 0,
-    overflow: 'hidden',
-    borderRadius: BORDER_RADIUS.xl,
-  },
-  scoreGradient: {
-    padding: SPACING.xxl,
-    alignItems: 'center',
-    borderRadius: BORDER_RADIUS.xl,
-  },
-  scoreValue: {
-    fontSize: 48,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 4,
-  },
-  scoreLabel: {
-    ...TYPOGRAPHY.bodySmallMedium,
-    color: 'rgba(255,255,255,0.8)',
-    marginBottom: SPACING.lg,
-  },
-  scoreBar: {
-    width: '80%',
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    marginBottom: SPACING.md,
-    overflow: 'hidden',
-  },
-  scoreBarFill: {
-    height: '100%',
-    borderRadius: 3,
-    backgroundColor: '#FFFFFF',
-  },
-  scoreDescription: {
-    ...TYPOGRAPHY.caption,
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
   },
   sectionTitle: {
     ...TYPOGRAPHY.captionBold,

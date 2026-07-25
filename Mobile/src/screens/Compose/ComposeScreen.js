@@ -17,7 +17,7 @@ let DocumentPicker = null;
 try {
   DocumentPicker = require('expo-document-picker');
 } catch {
-  console.log('[Compose] expo-document-picker not available.');
+  // expo-document-picker unavailable
 }
 
 export default function ComposeScreen({ navigation }) {
@@ -163,7 +163,7 @@ export default function ComposeScreen({ navigation }) {
         }
       }
     } catch (error) {
-      console.warn('Document picker error:', error);
+      if (__DEV__) console.warn('Document picker error:', error);
       setIsUploading(false);
     }
   }, [showToast]);

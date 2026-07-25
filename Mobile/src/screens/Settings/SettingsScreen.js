@@ -6,7 +6,6 @@ import { TYPOGRAPHY, SPACING } from '../../theme/theme';
 import Card from '../../components/common/Card';
 import useApp from '../../hooks/useApp';
 import useBiometric from '../../hooks/useBiometric';
-import useAuth from '../../hooks/useAuth';
 import { useTheme } from '../../context/ThemeContext';
 import { APP_INFO } from '../../constants/constants';
 import { registerForPushNotificationsAsync, unregisterPushNotificationsAsync } from '../../utils/pushNotificationHandler';
@@ -17,7 +16,6 @@ export default function SettingsScreen({ navigation }) {
   const { themeMode, setThemeMode } = useTheme();
   const { showToast } = useApp();
   const { isAvailable: biometricAvailable, isEnabled: biometricEnabled, biometricType, enableBiometric, disableBiometric } = useBiometric();
-  const { user } = useAuth();
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 

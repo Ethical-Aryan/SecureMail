@@ -6,7 +6,6 @@ import { TYPOGRAPHY, SPACING, BORDER_RADIUS } from '../../theme/theme';
 import Avatar from '../../components/common/Avatar';
 import Card from '../../components/common/Card';
 import Button from '../../components/common/Button';
-import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import useAuth from '../../hooks/useAuth';
 import useMail from '../../hooks/useMail';
 import { useTheme } from '../../context/ThemeContext';

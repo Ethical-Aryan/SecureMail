@@ -17,7 +17,7 @@ import { validateEmail, validatePassword } from '../../utils/validators';
 
 export default function LoginScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { login, biometricLogin: contextBiometricLogin, isLoading, error, clearError } = useAuth();
   const { isAvailable, isEnabled, biometricType, biometricLogin } = useBiometric();
 
@@ -133,6 +133,9 @@ export default function LoginScreen({ navigation }) {
           <TouchableOpacity
             onPress={() => navigation.navigate('ForgotPassword')}
             style={styles.forgotPasswordRow}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+            accessibilityRole="button"
+            accessibilityLabel="Forgot Password"
           >
             <Text style={[styles.forgotPasswordText, { color: colors.primary }]}>Forgot Password?</Text>
           </TouchableOpacity>

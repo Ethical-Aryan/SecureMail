@@ -28,7 +28,7 @@ export default function NotificationsScreen({ navigation }) {
       setNotifications(data.notifications || []);
       setUnreadNotificationsCount(data.unread_count || 0);
     } catch (error) {
-      console.warn('Failed to load notifications from backend:', error);
+      if (__DEV__) console.warn('Failed to load notifications from backend:', error);
     } finally {
       setLoading(false);
       setRefreshing(false);

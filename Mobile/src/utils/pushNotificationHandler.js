@@ -15,7 +15,7 @@ try {
     });
   }
 } catch {
-  console.log('[PushNotification] expo-notifications package not loaded.');
+  // Notifications module unavailable
 }
 
 /**
@@ -23,7 +23,6 @@ try {
  */
 export async function registerForPushNotificationsAsync() {
   if (!Notifications) {
-    console.log('[PushNotification] Skipping registration — expo-notifications module unavailable.');
     return null;
   }
 
@@ -40,12 +39,10 @@ export async function registerForPushNotificationsAsync() {
         finalStatus = status;
       }
     } catch (permError) {
-      console.log('[PushNotification] Push permissions check skipped (Expo Go SDK 53+ limitation):', permError.message);
       return null;
     }
 
     if (finalStatus !== 'granted') {
-      console.log('[PushNotification] Permission denied.');
       return null;
     }
 
@@ -58,7 +55,7 @@ export async function registerForPushNotificationsAsync() {
           lightColor: '#6B4EFF',
         });
       } catch (channelError) {
-        console.log('[PushNotification] Android notification channel creation skipped:', channelError.message);
+        // Channel creation skipped
       }
     }
 
@@ -66,7 +63,7 @@ export async function registerForPushNotificationsAsync() {
       const pushTokenData = await Notifications.getExpoPushTokenAsync();
       token = pushTokenData.data;
     } catch (tokenError) {
-      console.log('[PushNotification] Expo Push Token skipped (Expo Go SDK 53+ limitation or missing EAS project ID):', tokenError.message);
+      // Token skipped
     }
 
     if (token) {
@@ -74,7 +71,7 @@ export async function registerForPushNotificationsAsync() {
       await notificationService.registerPushToken(token, Platform.OS);
     }
   } catch (error) {
-    console.warn('[PushNotification] Registration error:', error);
+    // Registration failed silently
   }
 
   return token;
@@ -91,7 +88,7 @@ export async function unregisterPushNotificationsAsync() {
       await secureStorage.clearPushToken();
     }
   } catch (error) {
-    console.warn('[PushNotification] Unregistration error:', error);
+    // Unregistration error silently handled
   }
 }
 
@@ -124,7 +121,6 @@ export function setupNotificationListeners(onNotificationReceived, onNotificatio
       }
     };
   } catch (listenerError) {
-    console.log('[PushNotification] Notification listeners setup skipped:', listenerError.message);
     return () => {};
   }
 }

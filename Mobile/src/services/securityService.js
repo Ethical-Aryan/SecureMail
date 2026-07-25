@@ -17,24 +17,23 @@ const securityService = {
     const totalCount = Array.isArray(emails) ? emails.length : 0;
 
     return {
-      overallScore: 85,
       encryption: {
         status: 'active',
         label: 'End-to-End Encryption',
-        description: 'All messages are encrypted using AES-256',
+        description: 'All messages are encrypted using AES-256 GCM',
         icon: 'shield',
       },
-      twoFactor: {
-        status: 'available',
-        label: 'Two-Factor Authentication',
-        description: 'Not yet available — pending backend support',
-        icon: 'smartphone',
-      },
       biometric: {
-        status: 'available',
-        label: 'Biometric Lock',
-        description: 'Use Face ID or fingerprint to unlock the app',
+        status: 'active',
+        label: 'Biometric Authentication',
+        description: 'Use Face ID or fingerprint to unlock the application',
         icon: 'lock',
+      },
+      twoFactor: {
+        status: 'coming_soon',
+        label: 'Two-Factor Authentication',
+        description: 'Multi-factor authentication coming soon',
+        icon: 'smartphone',
       },
       stats: {
         encryptedEmails: encryptedCount,

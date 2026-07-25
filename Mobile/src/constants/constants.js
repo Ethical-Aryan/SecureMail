@@ -48,7 +48,6 @@ export const STORAGE_KEYS = {
   ONBOARDING_SEEN: 'securemail_onboarding_seen',
   BIOMETRIC_ENABLED: 'securemail_biometric_enabled',
   STORED_EMAIL: 'securemail_stored_email',
-  STORED_PASSWORD: 'securemail_stored_password',
   THEME_MODE: 'securemail_theme_mode',
   APP_LOCK_ENABLED: 'securemail_app_lock',
   NOTIFICATION_PREFS: 'securemail_notification_prefs',

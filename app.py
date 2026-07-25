@@ -1,5 +1,6 @@
 import os
 import re
+# pyrefly: ignore [missing-import]
 import redis
 import random
 from datetime import timedelta
@@ -169,6 +170,7 @@ def init_db():
                 password=MYSQL_PASSWORD,
                 ssl_disabled=is_local,
                 ssl_verify_cert=False,
+                ssl_verify_cert=True,
                 connection_timeout=5)
             cur = conn.cursor()
             cur.execute(f"CREATE DATABASE IF NOT EXISTS `{MYSQL_DATABASE}`")

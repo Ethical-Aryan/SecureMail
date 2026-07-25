@@ -18,7 +18,7 @@ export function ThemeProvider({ children }) {
           setThemeModeState(savedMode);
         }
       } catch (error) {
-        console.warn('Failed to load theme mode from SecureStore:', error);
+        if (__DEV__) console.warn('Failed to load theme mode from SecureStore:', error);
       } finally {
         setIsLoaded(true);
       }
@@ -32,7 +32,7 @@ export function ThemeProvider({ children }) {
     try {
       await secureStorage.setThemeMode(newMode);
     } catch (error) {
-      console.warn('Failed to persist theme mode to SecureStore:', error);
+      if (__DEV__) console.warn('Failed to persist theme mode to SecureStore:', error);
     }
   }, []);
 

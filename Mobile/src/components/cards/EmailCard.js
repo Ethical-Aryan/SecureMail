@@ -12,7 +12,7 @@ const EmailCard = memo(({
   onStar,
   onDelete,
 }) => {
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   const handlePress = useCallback(() => {
     if (onPress) onPress(email);
