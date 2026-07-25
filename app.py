@@ -47,30 +47,15 @@ def check_if_token_is_revoked(jwt_header, jwt_payload: dict):
             return False
     return False
 
-# Automatic Database Environment Switcher
+# Database Switcher (reads directly from environment variables)
 load_dotenv(override=True)
 
-FLASK_ENV = os.getenv("FLASK_ENV", "development").lower()
-IS_PROD = (FLASK_ENV == "production") or (os.getenv("ENV", "").lower() == "production") or (os.getenv("IS_PRODUCTION", "false").lower() == "true")
-
 DB_TYPE = os.getenv("DB_TYPE", "mysql").lower()
-
-if IS_PROD:
-    # Production Server -> Connected to Aiven Cloud MySQL
-    MYSQL_HOST = os.getenv("AIVEN_MYSQL_HOST", "securemail-db-sumit90asa-2195.l.aivencloud.com")
-    MYSQL_PORT = int(os.getenv("AIVEN_MYSQL_PORT", "15109"))
-    MYSQL_USER = os.getenv("AIVEN_MYSQL_USER", "avnadmin")
-    MYSQL_PASSWORD = os.getenv("AIVEN_MYSQL_PASSWORD", "")
-    MYSQL_DATABASE = os.getenv("AIVEN_MYSQL_DATABASE", "defaultdb")
-    print(f"[INFO] Production Environment Active -> Connected to Aiven Cloud MySQL ({MYSQL_HOST}:{MYSQL_PORT})")
-else:
-    # Localhost Development -> Connected to Local XAMPP MySQL
-    MYSQL_HOST = os.getenv("LOCAL_MYSQL_HOST", os.getenv("MYSQL_HOST", "localhost"))
-    MYSQL_PORT = int(os.getenv("LOCAL_MYSQL_PORT", os.getenv("MYSQL_PORT", "3306")))
-    MYSQL_USER = os.getenv("LOCAL_MYSQL_USER", os.getenv("MYSQL_USER", "root"))
-    MYSQL_PASSWORD = os.getenv("LOCAL_MYSQL_PASSWORD", os.getenv("MYSQL_PASSWORD", ""))
-    MYSQL_DATABASE = os.getenv("LOCAL_MYSQL_DATABASE", os.getenv("MYSQL_DATABASE", "securemail"))
-    print(f"[INFO] Localhost Environment Active ({FLASK_ENV}) -> Connected to Local XAMPP MySQL ({MYSQL_HOST}:{MYSQL_PORT})")
+MYSQL_HOST = os.getenv("MYSQL_HOST", "localhost")
+MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+MYSQL_USER = os.getenv("MYSQL_USER", "root")
+MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
+MYSQL_DATABASE = os.getenv("MYSQL_DATABASE", "securemail")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 SQLITE_PATH = os.path.join(BASE_DIR, "securemail.db")
