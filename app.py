@@ -508,22 +508,41 @@ def search_emails():
         return jsonify([]), 200
 
     user_email_lower = user_email.lower()
+    user_prefix = user_email_lower.split('@')[0]
     like_query = f"%{q}%"
 
-    query_sql = """
-        SELECT * FROM emails 
-        WHERE (LOWER(recipient_email) = %s OR LOWER(sender_email) = %s OR LOWER(owner_email) = %s)
-          AND (
-            LOWER(sender_email) LIKE %s OR 
-            LOWER(recipient_email) LIKE %s OR 
-            LOWER(subject) LIKE %s OR 
-            LOWER(body) LIKE %s OR 
-            LOWER(COALESCE(attachment_name, '')) LIKE %s OR
-            LOWER(COALESCE(folder, '')) LIKE %s
-          )
-        ORDER BY created_at DESC
-    """
-    params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query, like_query, like_query)
+    # If the user is searching for their own email/username, ignore recipient_email matching
+    # so we don't accidentally match every single inbox email where the user is the recipient.
+    is_self_search = (q in user_email_lower or q in user_prefix)
+
+    if is_self_search:
+        query_sql = """
+            SELECT * FROM emails 
+            WHERE (LOWER(recipient_email) = %s OR LOWER(sender_email) = %s OR LOWER(owner_email) = %s)
+              AND (
+                LOWER(sender_email) LIKE %s OR 
+                LOWER(subject) LIKE %s OR 
+                LOWER(body) LIKE %s OR 
+                LOWER(COALESCE(attachment_name, '')) LIKE %s
+              )
+            ORDER BY created_at DESC
+        """
+        params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query)
+    else:
+        query_sql = """
+            SELECT * FROM emails 
+            WHERE (LOWER(recipient_email) = %s OR LOWER(sender_email) = %s OR LOWER(owner_email) = %s)
+              AND (
+                LOWER(sender_email) LIKE %s OR 
+                LOWER(recipient_email) LIKE %s OR 
+                LOWER(subject) LIKE %s OR 
+                LOWER(body) LIKE %s OR 
+                LOWER(COALESCE(attachment_name, '')) LIKE %s OR
+                LOWER(COALESCE(folder, '')) LIKE %s
+              )
+            ORDER BY created_at DESC
+        """
+        params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query, like_query, like_query)
 
     emails = query_db(query_sql, params)
 
