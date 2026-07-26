@@ -487,8 +487,8 @@ def get_emails():
     
     return jsonify(res), 200
 
-# MOBILE SUPPORT UPDATE
-# Added for React Native production search compatibility.
+# MOBILE SEARCH UPDATE
+# Added sender-name and case-insensitive search support.
 @app.route('/api/emails/search', methods=['GET'])
 @jwt_required()
 def search_emails():
@@ -511,30 +511,32 @@ def search_emails():
     user_prefix = user_email_lower.split('@')[0]
     like_query = f"%{q}%"
 
-    # If the user is searching for their own email/username, ignore recipient_email matching
-    # so we don't accidentally match every single inbox email where the user is the recipient.
-    is_self_search = (q in user_email_lower or q in user_prefix)
+    # If user is searching for their own exact email/username, search sent/owned emails & subject/body
+    is_exact_self = (q == user_email_lower or q == user_prefix)
 
-    if is_self_search:
+    if is_exact_self:
         query_sql = """
             SELECT * FROM emails 
             WHERE (LOWER(recipient_email) = %s OR LOWER(sender_email) = %s OR LOWER(owner_email) = %s)
               AND (
                 LOWER(sender_email) LIKE %s OR 
+                REPLACE(REPLACE(REPLACE(LOWER(sender_email), '.', ' '), '_', ' '), '-', ' ') LIKE %s OR
                 LOWER(subject) LIKE %s OR 
                 LOWER(body) LIKE %s OR 
                 LOWER(COALESCE(attachment_name, '')) LIKE %s
               )
             ORDER BY created_at DESC
         """
-        params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query)
+        params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query, like_query)
     else:
         query_sql = """
             SELECT * FROM emails 
             WHERE (LOWER(recipient_email) = %s OR LOWER(sender_email) = %s OR LOWER(owner_email) = %s)
               AND (
                 LOWER(sender_email) LIKE %s OR 
+                REPLACE(REPLACE(REPLACE(LOWER(sender_email), '.', ' '), '_', ' '), '-', ' ') LIKE %s OR
                 LOWER(recipient_email) LIKE %s OR 
+                REPLACE(REPLACE(REPLACE(LOWER(recipient_email), '.', ' '), '_', ' '), '-', ' ') LIKE %s OR
                 LOWER(subject) LIKE %s OR 
                 LOWER(body) LIKE %s OR 
                 LOWER(COALESCE(attachment_name, '')) LIKE %s OR
@@ -542,7 +544,7 @@ def search_emails():
               )
             ORDER BY created_at DESC
         """
-        params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query, like_query, like_query)
+        params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query, like_query, like_query, like_query, like_query)
 
     emails = query_db(query_sql, params)
 
