@@ -224,7 +224,11 @@ def init_db():
         folder VARCHAR(50) DEFAULT 'inbox',
         attachment_name VARCHAR(255) NULL,
         attachment_size VARCHAR(50) NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_owner_email (owner_email),
+        INDEX idx_sender_email (sender_email),
+        INDEX idx_recipient_email (recipient_email),
+        INDEX idx_subject (subject)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     """
     create_devices_table = """
@@ -496,8 +500,10 @@ def get_emails():
 
     return jsonify(res), 200
 
-# MOBILE SEARCH UPDATE
-# Added sender-name and case-insensitive search support.
+# =====================================================
+# MOBILE SEARCH SUPPORT UPDATE
+# Added production search improvements for React Native.
+# =====================================================
 @app.route('/api/emails/search', methods=['GET'])
 @jwt_required()
 def search_emails():
