@@ -51,6 +51,7 @@ export default function InboxScreen({ navigation }) {
     }
 
     setIsSearching(true);
+    setSearchResults([]);
     debounceTimerRef.current = setTimeout(async () => {
       const res = await searchEmails(text);
       if (res.success) {
