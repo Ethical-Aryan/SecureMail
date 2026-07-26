@@ -466,26 +466,28 @@ def get_emails():
 
         sender_lower = e["sender_email"].lower()
         recipient_lower = e["recipient_email"].lower()
-        is_sent = (sender_lower == user_email_lower and recipient_lower != user_email_lower)
-
-        if is_sent:
+        if sender_lower == user_email_lower and recipient_lower != user_email_lower:
             display_folder = "sent"
-            target_email = e["recipient_email"]
-            display_name = f"To: {target_email.split('@')[0].replace('.', ' ').title()}"
         else:
             display_folder = e["folder"] or "inbox"
-            target_email = e["sender_email"]
-            display_name = target_email.split('@')[0].replace('.', ' ').title()
 
-        parts = target_email.split('@')[0].split('.')
+        sender_email_str = e["sender_email"]
+        sender_name = sender_email_str.split('@')[0].replace('.', ' ').title()
+        
+        recipient_email_str = e["recipient_email"]
+        recipient_name = recipient_email_str.split('@')[0].replace('.', ' ').title()
+
+        parts = sender_email_str.split('@')[0].split('.')
         initials = parts[0][0].upper() + (parts[1][0].upper() if len(parts) > 1 and len(parts[1]) > 0 else "")
         initials = initials[:2] if initials else "US"
 
         res.append({
             "id": e["id"],
             "owner_email": user_email,
-            "sender": display_name,
-            "senderEmail": target_email,
+            "sender": sender_name,
+            "senderEmail": sender_email_str,
+            "recipient": recipient_name,
+            "recipientEmail": recipient_email_str,
             "initials": initials,
             "subject": e["subject"],
             "preview": "🔑 Encrypted Message" if is_enc else (e["body"][:100] if e["body"] else ""),
@@ -575,26 +577,28 @@ def search_emails():
 
         sender_lower = e["sender_email"].lower()
         recipient_lower = e["recipient_email"].lower()
-        is_sent = (sender_lower == user_email_lower and recipient_lower != user_email_lower)
-
-        if is_sent:
+        if sender_lower == user_email_lower and recipient_lower != user_email_lower:
             display_folder = "sent"
-            target_email = e["recipient_email"]
-            display_name = f"To: {target_email.split('@')[0].replace('.', ' ').title()}"
         else:
             display_folder = e["folder"] or "inbox"
-            target_email = e["sender_email"]
-            display_name = target_email.split('@')[0].replace('.', ' ').title()
 
-        parts = target_email.split('@')[0].split('.')
+        sender_email_str = e["sender_email"]
+        sender_name = sender_email_str.split('@')[0].replace('.', ' ').title()
+        
+        recipient_email_str = e["recipient_email"]
+        recipient_name = recipient_email_str.split('@')[0].replace('.', ' ').title()
+
+        parts = sender_email_str.split('@')[0].split('.')
         initials = parts[0][0].upper() + (parts[1][0].upper() if len(parts) > 1 and len(parts[1]) > 0 else "")
         initials = initials[:2] if initials else "US"
 
         res.append({
             "id": e["id"],
             "owner_email": user_email,
-            "sender": display_name,
-            "senderEmail": target_email,
+            "sender": sender_name,
+            "senderEmail": sender_email_str,
+            "recipient": recipient_name,
+            "recipientEmail": recipient_email_str,
             "initials": initials,
             "subject": e["subject"],
             "preview": "🔑 Encrypted Message" if is_enc else (e["body"][:100] if e["body"] else ""),
