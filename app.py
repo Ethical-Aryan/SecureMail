@@ -460,19 +460,28 @@ def get_emails():
                 "size": e["attachment_size"]
             }
 
-        # Dynamically determine folder: if requesting user is the sender (and not self-mail), show under 'sent'
         sender_lower = e["sender_email"].lower()
         recipient_lower = e["recipient_email"].lower()
-        if sender_lower == user_email_lower and recipient_lower != user_email_lower:
+        is_sent = (sender_lower == user_email_lower and recipient_lower != user_email_lower)
+
+        if is_sent:
             display_folder = "sent"
+            target_email = e["recipient_email"]
+            display_name = f"To: {target_email.split('@')[0].replace('.', ' ').title()}"
         else:
             display_folder = e["folder"] or "inbox"
+            target_email = e["sender_email"]
+            display_name = target_email.split('@')[0].replace('.', ' ').title()
+
+        parts = target_email.split('@')[0].split('.')
+        initials = parts[0][0].upper() + (parts[1][0].upper() if len(parts) > 1 and len(parts[1]) > 0 else "")
+        initials = initials[:2] if initials else "US"
 
         res.append({
             "id": e["id"],
             "owner_email": user_email,
-            "sender": e["sender_email"].split('@')[0].replace('.', ' ').title(),
-            "senderEmail": e["sender_email"],
+            "sender": display_name,
+            "senderEmail": target_email,
             "initials": initials,
             "subject": e["subject"],
             "preview": "🔑 Encrypted Message" if is_enc else (e["body"][:100] if e["body"] else ""),
@@ -484,7 +493,7 @@ def get_emails():
             "folder": display_folder,
             "attachment": attachment_info
         })
-    
+
     return jsonify(res), 200
 
 # MOBILE SEARCH UPDATE
@@ -541,10 +550,6 @@ def search_emails():
 
     res = []
     for e in emails:
-        parts = e["sender_email"].split('@')[0].split('.')
-        initials = parts[0][0].upper() + (parts[1][0].upper() if len(parts) > 1 and len(parts[1]) > 0 else "")
-        initials = initials[:2] if initials else "US"
-
         time_str = "Just Now"
         if e["created_at"]:
             time_str = str(e["created_at"])[:19]
@@ -564,16 +569,26 @@ def search_emails():
 
         sender_lower = e["sender_email"].lower()
         recipient_lower = e["recipient_email"].lower()
-        if sender_lower == user_email_lower and recipient_lower != user_email_lower:
+        is_sent = (sender_lower == user_email_lower and recipient_lower != user_email_lower)
+
+        if is_sent:
             display_folder = "sent"
+            target_email = e["recipient_email"]
+            display_name = f"To: {target_email.split('@')[0].replace('.', ' ').title()}"
         else:
             display_folder = e["folder"] or "inbox"
+            target_email = e["sender_email"]
+            display_name = target_email.split('@')[0].replace('.', ' ').title()
+
+        parts = target_email.split('@')[0].split('.')
+        initials = parts[0][0].upper() + (parts[1][0].upper() if len(parts) > 1 and len(parts[1]) > 0 else "")
+        initials = initials[:2] if initials else "US"
 
         res.append({
             "id": e["id"],
             "owner_email": user_email,
-            "sender": e["sender_email"].split('@')[0].replace('.', ' ').title(),
-            "senderEmail": e["sender_email"],
+            "sender": display_name,
+            "senderEmail": target_email,
             "initials": initials,
             "subject": e["subject"],
             "preview": "🔑 Encrypted Message" if is_enc else (e["body"][:100] if e["body"] else ""),
@@ -581,7 +596,7 @@ def search_emails():
             "time": time_str,
             "locked": is_enc,
             "unread": not to_bool(e["is_read"]),
-            "starred": to_bool(e["is_starred"]),
+            "starred": to_bool(e["starred"] if "starred" in e else e["is_starred"]),
             "folder": display_folder,
             "attachment": attachment_info
         })
