@@ -167,6 +167,16 @@ export function MailProvider({ children }) {
     }
   }, []);
 
+  const searchEmails = useCallback(async (query, cancelToken) => {
+    try {
+      const data = await mailService.searchEmails(query, cancelToken);
+      return { success: true, data };
+    } catch (error) {
+      const message = error.userMessage || 'Unable to search emails. Please try again.';
+      return { success: false, error: message };
+    }
+  }, []);
+
   const clearError = useCallback(() => {
     dispatch({ type: MAIL_ACTIONS.CLEAR_ERROR });
   }, []);
@@ -176,13 +186,14 @@ export function MailProvider({ children }) {
       ...state,
       fetchEmails,
       sendEmail,
+      searchEmails,
       markAsRead,
       toggleStar,
       deleteEmail,
       decryptEmail,
       clearError,
     }),
-    [state, fetchEmails, sendEmail, markAsRead, toggleStar, deleteEmail, decryptEmail, clearError]
+    [state, fetchEmails, sendEmail, searchEmails, markAsRead, toggleStar, deleteEmail, decryptEmail, clearError]
   );
 
   return (

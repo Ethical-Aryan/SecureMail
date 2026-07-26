@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { View, FlatList, TouchableOpacity, Text, StyleSheet, RefreshControl } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TYPOGRAPHY, SPACING, BORDER_RADIUS, SHADOWS } from '../../theme/theme';
 import EmailCard from '../../components/cards/EmailCard';
 import Avatar from '../../components/common/Avatar';
+import SearchBar from '../../components/inputs/SearchBar';
 import LoadingSkeleton from '../../components/common/LoadingSkeleton';
 import EmptyView from '../../components/common/EmptyView';
 import ErrorView from '../../components/common/ErrorView';
@@ -20,31 +21,88 @@ const FILTER_TABS = [
 
 export default function InboxScreen({ navigation }) {
   const insets = useSafeAreaInsets();
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
   const { user } = useAuth();
-  const { emails, isLoading, isRefreshing, error, fetchEmails, toggleStar, markAsRead, deleteEmail } = useMail();
+  const { emails, isLoading, isRefreshing, error, fetchEmails, searchEmails, toggleStar, markAsRead, deleteEmail } = useMail();
 
   const [activeFilter, setActiveFilter] = useState('all');
+  const [isSearchActive, setIsSearchActive] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const debounceTimerRef = useRef(null);
 
   useEffect(() => {
     fetchEmails();
   }, [fetchEmails]);
 
+  // Handle debounced search query changes (300ms)
+  const handleSearchChange = useCallback((text) => {
+    setSearchQuery(text);
+
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+
+    if (!text.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    debounceTimerRef.current = setTimeout(async () => {
+      const res = await searchEmails(text);
+      if (res.success) {
+        setSearchResults(res.data || []);
+      } else {
+        setSearchResults([]);
+      }
+      setIsSearching(false);
+    }, 300);
+  }, [searchEmails]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setIsSearching(false);
+  }, []);
+
+  const toggleSearchMode = useCallback(() => {
+    if (isSearchActive) {
+      setIsSearchActive(false);
+      handleClearSearch();
+    } else {
+      setIsSearchActive(true);
+    }
+  }, [isSearchActive, handleClearSearch]);
+
+  const activeEmailList = useMemo(() => {
+    if (isSearchActive && searchQuery.trim().length > 0) {
+      return searchResults;
+    }
+    return emails;
+  }, [isSearchActive, searchQuery, searchResults, emails]);
+
   const filteredEmails = useMemo(() => {
-    let result = emails;
+    let result = activeEmailList;
     if (activeFilter === 'unread') {
       result = result.filter(e => e.unread);
     } else if (activeFilter === 'encrypted') {
       result = result.filter(e => e.locked);
     }
     return result;
-  }, [emails, activeFilter]);
+  }, [activeEmailList, activeFilter]);
 
   const unreadCount = useMemo(() => emails.filter(e => e.unread).length, [emails]);
 
   const handleRefresh = useCallback(() => {
-    fetchEmails(true);
-  }, [fetchEmails]);
+    if (isSearchActive && searchQuery.trim().length > 0) {
+      handleSearchChange(searchQuery);
+    } else {
+      fetchEmails(true);
+    }
+  }, [isSearchActive, searchQuery, handleSearchChange, fetchEmails]);
 
   const handleEmailPress = useCallback((email) => {
     if (email.unread) {
@@ -73,6 +131,13 @@ export default function InboxScreen({ navigation }) {
   const keyExtractor = useCallback((item) => String(item.id), []);
 
   const getEmptyProps = () => {
+    if (isSearchActive && searchQuery.trim().length > 0) {
+      return {
+        icon: 'search',
+        title: 'No emails found',
+        message: 'Try searching by sender, subject, or content.',
+      };
+    }
     return { icon: 'inbox', title: 'Inbox is empty', message: 'New emails will appear here' };
   };
 
@@ -108,15 +173,27 @@ export default function InboxScreen({ navigation }) {
           />
         </View>
         <Text style={[styles.title, { color: colors.textPrimary }]}>Inbox</Text>
-        <TouchableOpacity style={styles.headerRight}>
-          <Feather name="search" size={24} color={colors.textPrimary} />
+        <TouchableOpacity style={styles.headerRight} onPress={toggleSearchMode}>
+          <Feather name={isSearchActive ? 'x' : 'search'} size={24} color={colors.textPrimary} />
         </TouchableOpacity>
       </View>
+
+      {/* Backend Search Bar */}
+      {isSearchActive && (
+        <SearchBar
+          value={searchQuery}
+          onChangeText={handleSearchChange}
+          placeholder="Search sender, subject, body..."
+          onClear={handleClearSearch}
+        />
+      )}
 
       {/* Subheading */}
       <View style={styles.subheadingRow}>
         <Text style={[styles.subheadingText, { color: colors.textSecondary }]}>
-          {unreadCount} unread · Encrypted inbox
+          {isSearchActive && searchQuery.trim().length > 0
+            ? `${filteredEmails.length} search results found`
+            : `${unreadCount} unread · Encrypted inbox`}
         </Text>
       </View>
 
@@ -144,30 +221,35 @@ export default function InboxScreen({ navigation }) {
         })}
       </View>
 
-      {/* Email List */}
-      <FlatList
-        data={filteredEmails}
-        renderItem={renderEmailItem}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={[
-          styles.listContent,
-          filteredEmails.length === 0 && styles.emptyList,
-        ]}
-        refreshControl={
-          <RefreshControl
-            refreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            colors={[colors.primary]}
-            tintColor={colors.primary}
-          />
-        }
-        ListEmptyComponent={<EmptyView {...getEmptyProps()} />}
-        showsVerticalScrollIndicator={false}
-        initialNumToRender={10}
-        maxToRenderPerBatch={10}
-        windowSize={10}
-        removeClippedSubviews={true}
-      />
+      {/* Searching Loader Indicator */}
+      {isSearching ? (
+        <LoadingSkeleton type="email" count={4} />
+      ) : (
+        /* Email List */
+        <FlatList
+          data={filteredEmails}
+          renderItem={renderEmailItem}
+          keyExtractor={keyExtractor}
+          contentContainerStyle={[
+            styles.listContent,
+            filteredEmails.length === 0 && styles.emptyList,
+          ]}
+          refreshControl={
+            <RefreshControl
+              refreshing={isRefreshing}
+              onRefresh={handleRefresh}
+              colors={[colors.primary]}
+              tintColor={colors.primary}
+            />
+          }
+          ListEmptyComponent={<EmptyView {...getEmptyProps()} />}
+          showsVerticalScrollIndicator={false}
+          initialNumToRender={10}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          removeClippedSubviews={true}
+        />
+      )}
 
       {/* Floating Action Button */}
       <TouchableOpacity

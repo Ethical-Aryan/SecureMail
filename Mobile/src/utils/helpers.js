@@ -195,18 +195,3 @@ export function filterByFolder(emails, folder) {
   if (folder === 'starred') return emails.filter((e) => e.starred);
   return emails.filter((e) => e.folder === folder);
 }
-
-/**
- * Search emails by query
- */
-export function searchEmails(emails, query) {
-  if (!query || !Array.isArray(emails)) return emails;
-  const lowerQuery = query.toLowerCase();
-  return emails.filter(
-    (e) =>
-      (e.subject && e.subject.toLowerCase().includes(lowerQuery)) ||
-      (e.sender && e.sender.toLowerCase().includes(lowerQuery)) ||
-      (e.senderEmail && e.senderEmail.toLowerCase().includes(lowerQuery)) ||
-      (e.preview && e.preview.toLowerCase().includes(lowerQuery))
-  );
-}

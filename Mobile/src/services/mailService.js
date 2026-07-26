@@ -121,6 +121,20 @@ const mailService = {
     });
     return response.data;
   },
+
+  /**
+   * GET /api/emails/search?q=:query
+   * Auth: JWT Required
+   * Returns: Array of matching email objects
+   */
+  async searchEmails(query, cancelToken) {
+    if (!query || !query.trim()) return [];
+    const response = await api.get(API_ENDPOINTS.EMAILS.SEARCH, {
+      params: { q: query.trim() },
+      cancelToken,
+    });
+    return response.data;
+  },
 };
 
 export default mailService;

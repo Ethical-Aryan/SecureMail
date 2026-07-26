@@ -26,6 +26,7 @@ export const API_ENDPOINTS = {
     DELETE: (id) => `/api/emails/${id}`,
     DECRYPT: (id) => `/api/emails/${id}/decrypt`,
     UPLOAD: '/api/upload',
+    SEARCH: '/api/emails/search',
   },
   STORAGE: {
     INFO: '/api/storage',

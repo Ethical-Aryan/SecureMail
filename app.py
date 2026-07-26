@@ -77,6 +77,17 @@ MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "")
 MYSQL_DATABASE = os.getenv("MYSQL_DATABASE")
 MYSQL_SSL_CA = os.getenv("MYSQL_SSL_CA", None)
 
+def to_bool(val):
+    if val is None:
+        return False
+    if isinstance(val, bool):
+        return val
+    if isinstance(val, (int, float)):
+        return val != 0
+    if isinstance(val, str):
+        return val.lower() in ("true", "1", "t", "yes")
+    return bool(val)
+
 def validate_db_config():
     required_vars = {
         "MYSQL_HOST": MYSQL_HOST,
@@ -474,6 +485,95 @@ def get_emails():
             "attachment": attachment_info
         })
     
+    return jsonify(res), 200
+
+# MOBILE SUPPORT UPDATE
+# Added for React Native production search compatibility.
+@app.route('/api/emails/search', methods=['GET'])
+@jwt_required()
+def search_emails():
+    from flask_jwt_extended import get_jwt
+    claims = get_jwt()
+    user_email = claims.get("email")
+    if not user_email:
+        user_id = get_jwt_identity()
+        user = query_db("SELECT email FROM users WHERE id = %s", (user_id,), one=True)
+        user_email = user["email"] if user else None
+
+    if not user_email:
+        return jsonify({"error": "User identity not found"}), 404
+
+    q = request.args.get("q", "").strip().lower()
+    if not q:
+        return jsonify([]), 200
+
+    user_email_lower = user_email.lower()
+    like_query = f"%{q}%"
+
+    query_sql = """
+        SELECT * FROM emails 
+        WHERE (LOWER(recipient_email) = %s OR LOWER(sender_email) = %s OR LOWER(owner_email) = %s)
+          AND (
+            LOWER(sender_email) LIKE %s OR 
+            LOWER(recipient_email) LIKE %s OR 
+            LOWER(subject) LIKE %s OR 
+            LOWER(body) LIKE %s OR 
+            LOWER(COALESCE(attachment_name, '')) LIKE %s OR
+            LOWER(COALESCE(folder, '')) LIKE %s
+          )
+        ORDER BY created_at DESC
+    """
+    params = (user_email_lower, user_email_lower, user_email_lower, like_query, like_query, like_query, like_query, like_query, like_query)
+
+    emails = query_db(query_sql, params)
+
+    res = []
+    for e in emails:
+        parts = e["sender_email"].split('@')[0].split('.')
+        initials = parts[0][0].upper() + (parts[1][0].upper() if len(parts) > 1 and len(parts[1]) > 0 else "")
+        initials = initials[:2] if initials else "US"
+
+        time_str = "Just Now"
+        if e["created_at"]:
+            time_str = str(e["created_at"])[:19]
+
+        has_passkey = bool(e["passkey"] and str(e["passkey"]).strip())
+        is_enc = to_bool(e["is_encrypted"]) or has_passkey
+        email_body = e["body"].split('\n') if e["body"] else []
+        if is_enc:
+            email_body = ["🔑 [Secure Encrypted Payload - Decryption Required]"]
+
+        attachment_info = None
+        if e["attachment_name"] and not is_enc:
+            attachment_info = {
+                "name": e["attachment_name"],
+                "size": e["attachment_size"]
+            }
+
+        sender_lower = e["sender_email"].lower()
+        recipient_lower = e["recipient_email"].lower()
+        if sender_lower == user_email_lower and recipient_lower != user_email_lower:
+            display_folder = "sent"
+        else:
+            display_folder = e["folder"] or "inbox"
+
+        res.append({
+            "id": e["id"],
+            "owner_email": user_email,
+            "sender": e["sender_email"].split('@')[0].replace('.', ' ').title(),
+            "senderEmail": e["sender_email"],
+            "initials": initials,
+            "subject": e["subject"],
+            "preview": "🔑 Encrypted Message" if is_enc else (e["body"][:100] if e["body"] else ""),
+            "body": email_body,
+            "time": time_str,
+            "locked": is_enc,
+            "unread": not to_bool(e["is_read"]),
+            "starred": to_bool(e["is_starred"]),
+            "folder": display_folder,
+            "attachment": attachment_info
+        })
+
     return jsonify(res), 200
 
 @app.route('/api/emails', methods=['POST'])
